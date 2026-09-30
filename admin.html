@@ -168,6 +168,50 @@
 
 <script>
 const IMG = id => `https://drive.google.com/thumbnail?id=${id}&sz=w400`;
+
+// Google Drive API key (Drive API only, restricted to this site's domain).
+// Needed to LIST the files in a folder; a public folder link alone is not enough.
+const DRIVE_API_KEY = '';
+
+// Accepts a folder link in any common form, or a bare ID. Returns the ID or ''.
+function driveFolderId(input){
+  const s = String(input || '').trim();
+  let m = s.match(/\/folders\/([A-Za-z0-9_-]{10,})/) || s.match(/[?&]id=([A-Za-z0-9_-]{10,})/);
+  if (m) return m[1];
+  return /^[A-Za-z0-9_-]{10,}$/.test(s) ? s : '';
+}
+
+async function loadFolder(){
+  const d = draft;
+  const id = driveFolderId(d.folder);
+  d.images = []; d.imgError = '';
+  if (!id){ d.imgState = 'error'; d.imgError = 'Google Drive хавтасны холбоос буруу байна.'; return render(); }
+  if (!DRIVE_API_KEY){ d.imgState = 'error';
+    d.imgError = 'Drive API түлхүүр тохируулаагүй байна (admin.html доторх DRIVE_API_KEY).'; return render(); }
+  d.imgState = 'loading'; render();
+  const q = encodeURIComponent(`'${id}' in parents and mimeType contains 'image/' and trashed = false`);
+  const url = `https://www.googleapis.com/drive/v3/files?q=${q}&fields=files(id,name)&pageSize=100&key=${DRIVE_API_KEY}`;
+  try {
+    const r = await fetch(url);
+    if (!r.ok){
+      d.imgState = 'error';
+      d.imgError = r.status === 404 || r.status === 403
+        ? 'Хавтас олдсонгүй эсвэл нээлттэй биш. Drive дээр Share → "Anyone with the link" → Viewer болго.'
+        : `Drive алдаа (${r.status}).`;
+      return render();
+    }
+    const files = ((await r.json()).files || [])
+      .sort((a,b) => a.name.localeCompare(b.name, undefined, { numeric:true }));   // 2.png before 10.png
+    if (!files.length){ d.imgState = 'error'; d.imgError = 'Энэ хавтсанд зураг алга.'; return render(); }
+    d.images = files.map(f => f.id); d.imgState = 'ok';
+  } catch(e){
+    d.imgState = 'error'; d.imgError = 'Сүлжээний алдаа. Дахин оролдоно уу.';
+  }
+  render();
+}
+
+// The first image is the one shown on the product card.
+const setMainImage = i => { const im = draft.images; im.unshift(im.splice(i,1)[0]); render(); };
 const mnt = n => (n||0).toLocaleString('en-US').replace(/,/g,' ')+'₮';
 
 const BRANCHES = [
@@ -343,7 +387,7 @@ function productsView(){
 function startDraft(){
   draft = {
     step:1,
-    name:'', sku:'', price:180000, description:'', image:'',
+    name:'', sku:'', price:180000, description:'', folder:'', images:[], imgState:'', imgError:'',
     category:'main', hot:false, fresh:false,
     axes:[
       { name:'Хийцлэл', values:['Оёмол','Давхар эсгий'], deltas:{'Оёмол':0,'Давхар эсгий':25000} },
@@ -387,9 +431,21 @@ function newProductView(){
       <div class="cols">
         <div class="field"><label for="p">Суурь үнэ (₮)</label>
           <input id="p" type="number" value="${d.price}" oninput="draft.price=+this.value"></div>
-        <div class="field"><label for="img">Зургийн холбоос</label>
-          <input id="img" value="${d.image}" placeholder="https://…" oninput="draft.image=this.value"></div>
+        <div class="field"><label for="img">Google Drive хавтас</label>
+          <div style="display:flex;gap:8px">
+            <input id="img" value="${d.folder}" placeholder="https://drive.google.com/drive/folders/…"
+                   oninput="draft.folder=this.value" onkeydown="if(event.key==='Enter')loadFolder()">
+            <button class="btn ghost sm" style="flex:none" onclick="loadFolder()"
+                    ${d.imgState==='loading'?'disabled':''}>${d.imgState==='loading'?'Уншиж байна…':'Зураг татах'}</button>
+          </div></div>
       </div>
+      ${d.imgState==='error' ? `<div class="note warn" style="margin:0 0 14px">${d.imgError}</div>` : ''}
+      ${d.images.length ? `<div class="field"><label>Зураг (${d.images.length}) — эхнийх нь нүүр зураг, өөр зураг дээр дарж солино</label>
+        <div style="display:flex;flex-wrap:wrap;gap:8px">${d.images.map((id,i)=>`
+          <button onclick="setMainImage(${i})" title="Нүүр зураг болгох"
+            style="padding:0;border:2px solid ${i?'var(--line)':'var(--ink)'};border-radius:10px;background:none;cursor:pointer">
+            <img src="${IMG(id)}" alt="" style="width:64px;height:64px;object-fit:cover;border-radius:8px;display:block"></button>`).join('')}
+        </div></div>` : ''}
       <div class="cols3">
         <div class="field"><label for="cat">Ангилал</label>
           <select id="cat" onchange="draft.category=this.value">
@@ -508,7 +564,7 @@ const fillStock = n => { draft.combos.forEach(c=>{ if(c.on && !c.preorder){ c.st
 function saveDraft(){
   const d = draft;
   const p = { id:'m'+(PRODUCTS.length+1), sku:d.sku, name:d.name, base_price:d.price,
-              image:d.image || IMG(PHOTOS[0]), is_active:true,
+              image: d.images.length ? IMG(d.images[0]) : IMG(PHOTOS[0]), images: d.images.map(IMG), is_active:true,
               category:d.category, hot:d.hot, fresh:d.fresh,
               axes:d.axes.map(a=>({name:a.name, values:[...a.values]})), variants:[] };
   d.combos.filter(c=>c.on).forEach((c,i)=>{
