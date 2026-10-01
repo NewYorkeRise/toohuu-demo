@@ -59,6 +59,27 @@
   .tick{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--ink);letter-spacing:0;
         text-transform:none;margin:0;padding:9px 0}
   .tick input{width:16px;height:16px;accent-color:#171614;cursor:pointer}
+  .gallery{display:grid;grid-template-columns:repeat(auto-fill,minmax(112px,1fr));gap:10px;padding:10px;
+           border:1.5px dashed var(--line);border-radius:14px;background:#FBFAF8;transition:border-color .15s,background .15s}
+  .gallery.drag{border-color:var(--signal);background:var(--signal-soft)}
+  .gtile{position:relative;aspect-ratio:1;border-radius:10px;overflow:hidden;background:#E4E0D8;border:2px solid transparent}
+  .gtile.main{border-color:var(--ink)}
+  .gtile img{width:100%;height:100%;object-fit:cover;display:block;cursor:pointer}
+  .gmain{position:absolute;left:6px;top:6px;background:var(--ink);color:#fff;font-size:10.5px;font-weight:600;
+         padding:2px 7px;border-radius:6px}
+  .gx{position:absolute;right:5px;top:5px;width:26px;height:26px;border-radius:50%;border:none;
+      background:rgba(0,0,0,.62);color:#fff;cursor:pointer;font-size:15px;line-height:1}
+  .gmove{position:absolute;left:5px;right:5px;bottom:5px;display:flex;justify-content:space-between}
+  .gmove button{width:28px;height:26px;border:none;border-radius:7px;background:rgba(255,255,255,.9);cursor:pointer;font-size:13px}
+  .gmove button:disabled{opacity:0;pointer-events:none}
+  label.gadd{aspect-ratio:1;margin:0;border:1.5px dashed var(--ink-3);border-radius:10px;background:var(--card);
+             display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;cursor:pointer;
+             font-size:12px;letter-spacing:0;text-transform:none;color:var(--ink-2);text-align:center}
+  label.gadd b{font-size:28px;font-weight:400;line-height:1}
+  label.gadd:hover{border-color:var(--ink)}
+  .ghint{font-size:12px;color:var(--ink-3);margin-top:7px;line-height:1.5}
+  details.more{margin:0 0 14px}
+  details.more summary{cursor:pointer;font-size:12.5px;color:var(--ink-2)}
 
   select,input,textarea{border:1px solid var(--line);border-radius:9px;padding:9px 11px;font:inherit;font-size:13.5px;
     background:var(--card);color:var(--ink);width:100%;resize:none}
@@ -417,7 +438,7 @@ function startDraft(pid){
     step:1, editingId:p.id,
     name:p.name, sku:p.sku, price:p.base_price, description:p.description || '',
     folder:'', imgUrl:'', images:[...(p.images && p.images.length ? p.images : [p.image])], imgState:'', imgError:'',
-    category:p.category || 'main', hot:!!p.hot, fresh:!!p.fresh, active:p.is_active !== false,
+    category:p.category || 'main', hot:!!p.hot, fresh:!!p.fresh, active:p.is_active !== false, imgBusy:0,
     axes: fitDeltas(p),
     origValues: Object.fromEntries(p.axes.map(a => [a.name, [...a.values]])),
     existing: new Map(p.variants.map(v => [comboKey(p.axes, v.options), v])),
@@ -425,7 +446,7 @@ function startDraft(pid){
   } : {
     step:1, editingId:null,
     name:'', sku:'', price:180000, description:'', folder:'', imgUrl:'', images:[], imgState:'', imgError:'',
-    category:'main', hot:false, fresh:false, active:true,
+    category:'main', hot:false, fresh:false, active:true, imgBusy:0,
     axes:[
       { name:'Хийцлэл', values:['Оёмол','Давхар эсгий'], deltas:{'Оёмол':0,'Давхар эсгий':25000} },
       { name:'Өнгө',    values:['Хар','Бор'],            deltas:{'Хар':0,'Бор':0} },
@@ -462,6 +483,56 @@ function addImageUrl(){
   draft.imgUrl=''; draft.imgState=''; draft.imgError=''; render();
 }
 const removeImage = i => { draft.images.splice(i,1); render(); };
+const moveImage = (i, dir) => {
+  const im = draft.images, j = i + dir;
+  if (j < 0 || j >= im.length) return;
+  [im[i], im[j]] = [im[j], im[i]]; render();
+};
+
+// Photos straight from the computer or phone. Each one is shrunk in the
+// browser (max 1600px, WebP) so a 5 MB phone photo becomes ~150 KB.
+const MAX_SIDE = 1600, MAX_FILE_MB = 30;
+const isHeic = f => /\.(heic|heif)$/i.test(f.name) || /hei[cf]/i.test(f.type);
+
+async function shrinkImage(file){
+  const bmp = await createImageBitmap(file);     // throws for formats this browser can't decode (HEIC in Chrome)
+  const k = Math.min(1, MAX_SIDE / Math.max(bmp.width, bmp.height));
+  const w = Math.round(bmp.width * k), h = Math.round(bmp.height * k);
+  const c = document.createElement('canvas'); c.width = w; c.height = h;
+  c.getContext('2d').drawImage(bmp, 0, 0, w, h);
+  if (bmp.close) bmp.close();
+  const blob = await new Promise(res => c.toBlob(res, 'image/webp', 0.82));
+  if (!blob) throw new Error('encode failed');
+  return blob;
+}
+
+async function addImageFiles(fileList){
+  const d = draft, files = [...(fileList || [])];
+  if (!files.length) return;
+  const errs = [];
+  d.imgState = ''; d.imgError = ''; d.imgBusy = files.length; render();
+  for (const f of files){
+    if (!/^image\//.test(f.type) && !isHeic(f)) errs.push(`${f.name}: зураг биш`);
+    else if (f.size > MAX_FILE_MB * 1048576) errs.push(`${f.name}: ${MAX_FILE_MB}MB-аас том`);
+    else {
+      try { d.images.push(URL.createObjectURL(await shrinkImage(f))); }
+      catch { errs.push(isHeic(f) ? `${f.name}: HEIC (iPhone) формат энэ хөтөч дээр уншигдахгүй — JPG болгож оруулна уу`
+                                  : `${f.name}: уншиж чадсангүй`); }
+    }
+    d.imgBusy--;
+    if (draft !== d) return;                     // admin left this form while photos were processing
+    render();
+  }
+  d.imgBusy = 0;
+  if (errs.length){ d.imgState = 'error'; d.imgError = errs.join(' · '); }
+  render();
+}
+
+function onDropImages(e){
+  e.preventDefault();
+  e.currentTarget.classList.remove('drag');
+  addImageFiles(e.dataTransfer && e.dataTransfer.files);
+}
 
 function buildCombos(){
   const lists = draft.axes.map(a=>a.values);
@@ -506,32 +577,43 @@ function newProductView(){
       <div class="cols">
         <div class="field"><label for="p">Суурь үнэ (₮)</label>
           <input id="p" type="number" value="${d.price}" oninput="draft.price=+this.value"></div>
-        <div class="field"><label for="img">Google Drive хавтас</label>
+        <div></div>
+      </div>
+      <div class="field"><label>Зураг (${d.images.length})</label>
+        <div class="gallery" ondragover="event.preventDefault();this.classList.add('drag')"
+             ondragleave="this.classList.remove('drag')" ondrop="onDropImages(event)">
+          ${d.images.map((url,i)=>`
+          <div class="gtile ${i?'':'main'}">
+            <img src="${esc(url)}" alt="" onclick="setMainImage(${i})" title="${i?'Нүүр зураг болгох':'Нүүр зураг'}">
+            ${i?'':'<span class="gmain">Нүүр</span>'}
+            <button class="gx" onclick="removeImage(${i})" aria-label="Зураг устгах">×</button>
+            <div class="gmove">
+              <button onclick="moveImage(${i},-1)" ${i?'':'disabled'} aria-label="Зүүн тийш">←</button>
+              <button onclick="moveImage(${i},1)" ${i<d.images.length-1?'':'disabled'} aria-label="Баруун тийш">→</button>
+            </div>
+          </div>`).join('')}
+          <label class="gadd">${d.imgBusy ? `<span>Боловсруулж байна…<br>(${d.imgBusy})</span>` : '<b>+</b><span>Зураг нэмэх</span>'}
+            <input type="file" accept="image/*" multiple hidden onchange="addImageFiles(this.files);this.value=''"></label>
+        </div>
+        <div class="ghint">Компьютерээс чирж оруулах эсвэл «+» дээр дарна (олон зураг зэрэг). Утсан дээр зургийн сангаас шууд сонгоно.
+          Эхний зураг нь нүүр зураг — өөр зураг дээр дарж солино, ← → товчоор дараалал өөрчилнө.</div>
+      </div>
+      ${d.imgState==='error' ? `<div class="note warn" style="margin:0 0 14px">${esc(d.imgError)}</div>` : ''}
+      <details class="more"><summary>Холбоосоор нэмэх (Google Drive)</summary>
+        <div class="field" style="margin-top:10px"><label for="img">Google Drive хавтас</label>
           <div style="display:flex;gap:8px">
             <input id="img" value="${esc(d.folder)}" placeholder="https://drive.google.com/drive/folders/…"
                    oninput="draft.folder=this.value" onkeydown="if(event.key==='Enter')loadFolder()">
             <button class="btn ghost sm" style="flex:none" onclick="loadFolder()"
                     ${d.imgState==='loading'?'disabled':''}>${d.imgState==='loading'?'Уншиж байна…':'Зураг татах'}</button>
           </div></div>
-      </div>
-      ${d.imgState==='error' ? `<div class="note warn" style="margin:0 0 14px">${d.imgError}</div>` : ''}
-      <div class="field"><label for="iu">Нэг зураг нэмэх (Drive файлын холбоос эсвэл https://…)</label>
-        <div style="display:flex;gap:8px">
-          <input id="iu" value="${esc(d.imgUrl)}" placeholder="https://drive.google.com/file/d/…"
-                 oninput="draft.imgUrl=this.value" onkeydown="if(event.key==='Enter')addImageUrl()">
-          <button class="btn ghost sm" style="flex:none" onclick="addImageUrl()">Нэмэх</button>
-        </div></div>
-      <div class="field"><label>Зураг (${d.images.length})${d.images.length ? ' — эхнийх нь нүүр зураг; өөр зураг дээр дарж солино, × устгана' : ''}</label>
-        ${d.images.length ? `<div style="display:flex;flex-wrap:wrap;gap:8px">${d.images.map((url,i)=>`
-          <div style="position:relative">
-            <button onclick="setMainImage(${i})" title="Нүүр зураг болгох"
-              style="padding:0;border:2px solid ${i?'var(--line)':'var(--ink)'};border-radius:10px;background:none;cursor:pointer;display:block">
-              <img src="${esc(url)}" alt="" style="width:64px;height:64px;object-fit:cover;border-radius:8px;display:block"></button>
-            <button onclick="removeImage(${i})" aria-label="Зураг устгах" title="Устгах"
-              style="position:absolute;top:-7px;right:-7px;width:22px;height:22px;border-radius:50%;border:1px solid var(--line);background:var(--card);cursor:pointer;font-size:13px;line-height:1">×</button>
-          </div>`).join('')}</div>`
-          : `<div style="font-size:12.5px;color:var(--ink-3)">Зураг алга — дэлгүүрт түр зураг харагдана.</div>`}
-      </div>
+        <div class="field"><label for="iu">Нэг зураг (Drive файлын холбоос эсвэл https://…)</label>
+          <div style="display:flex;gap:8px">
+            <input id="iu" value="${esc(d.imgUrl)}" placeholder="https://drive.google.com/file/d/…"
+                   oninput="draft.imgUrl=this.value" onkeydown="if(event.key==='Enter')addImageUrl()">
+            <button class="btn ghost sm" style="flex:none" onclick="addImageUrl()">Нэмэх</button>
+          </div></div>
+      </details>
       <div class="cols3">
         <div class="field"><label for="cat">Ангилал</label>
           <select id="cat" onchange="draft.category=this.value">
