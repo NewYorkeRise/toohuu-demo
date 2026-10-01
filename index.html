@@ -307,14 +307,6 @@
   .lb-bot button[aria-current="true"]{border-color:#fff}
   .lb-bot button[aria-current="true"] img{opacity:1}
 
-  .price-guide{border:1px solid var(--line);border-radius:16px;padding:18px;margin-bottom:22px;background:var(--subtle)}
-  .price-guide h1,.price-guide h2{font-family:'Unbounded',sans-serif;font-size:18px;font-weight:500}
-  .price-list{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px 24px;margin-top:16px}
-  .price-list div{padding:10px 0;border-top:1px solid var(--line)}
-  .price-list dt{font-size:13px;color:var(--ink-2);line-height:1.5}
-  .price-list dd{font-size:16px;font-weight:600;margin-top:4px;white-space:nowrap}
-  .guide-actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:16px}
-  .guide-actions .btn{width:auto;margin:0;padding:12px 16px;font-size:13px}
   a.btn{display:block;text-align:center;text-decoration:none}
   .info-block{border:1px solid var(--line);border-radius:14px;padding:18px;margin-top:16px}
   .info-block h2{font-size:17px;line-height:1.5}
@@ -330,10 +322,6 @@
   .selection-count{font-size:14px;font-weight:600;white-space:nowrap;margin-left:auto}
   #order-draft{width:100%;margin-top:8px;line-height:1.6;resize:vertical}
   @media(max-width:599px){
-    .price-guide{padding:15px}
-    .price-list{grid-template-columns:repeat(2,minmax(0,1fr));gap:4px 14px}
-    .price-list dd{font-size:14px}
-    .guide-actions .btn{flex:1}
     .info-block{padding:15px}
   }
 </style>
@@ -472,14 +460,6 @@ const BUSINESS = {
   delivery:'Хот дотор 8,000–10,000₮. Хүргэлтийн бүсээс хамааран үнэ өөр байна.',
   rural:'Хөдөө орон нутгийн унаанд тавьж өгнө. Чиглэл, унааны мэдээллийг чатаар тохиролцоно.'
 };
-const PRICE_GUIDE = [
-  ['Хүүхдийн загвар','110,000–120,000₮'],
-  ['Хосолмол загвар','210,000₮'],
-  ['Нумтай загвар','230,000₮'],
-  ['Балерина загвар','250,000₮'],
-  ['Буузан загвар','270,000₮'],
-  ['Хагас түрийтэй загвар','320,000–380,000₮']
-];
 const esc = value => String(value).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const phone = raw => {
   const d=String(raw).replace(/\D/g,'').replace(/^976/,'');
@@ -495,18 +475,6 @@ function selectionLines(){
     if(!p || !v || !Number.isInteger(l.qty) || l.qty < 1) throw new Error('Сонгосон бараагаа дахин шалгана уу.');
     return {name:label(p,v), img:p.images[0], qty:l.qty, unit:unitOf(p)};
   });
-}
-
-function priceGuide(){
-  return `<section class="price-guide" aria-labelledby="price-heading">
-    <h2 id="price-heading">Гутлын үнэ</h2>
-    <p class="desc">Гутлын үнэ өнгө, загвар хийц, размераас хамааран ялгаатай. Сонгосон гутлынхаа эцсийн үнийг чатаар баталгаажуулна уу.</p>
-    <dl class="price-list">${PRICE_GUIDE.map(([name,price])=>`<div><dt>${name}</dt><dd>${price}</dd></div>`).join('')}</dl>
-    <div class="guide-actions">
-      <button class="btn" onclick="navTo('orders')">Захиалах заавар</button>
-      <a class="btn ghost" href="${BUSINESS.messenger}" target="_blank" rel="noopener">Чатаар үнэ лавлах</a>
-    </div>
-  </section>`;
 }
 
 function bankDetails(){
@@ -622,7 +590,6 @@ function render(){
 function catalogView(){
   const shown = CATALOG.filter(FILTERS.find(f=>f.key===filter).test);
   app.innerHTML = `
-    ${priceGuide()}
     <div class="tabs">${FILTERS.map(f=>{
       const n = CATALOG.filter(f.test).length;
       if (!n) return '';                      // no kids' models declared yet — don't show an empty tab
