@@ -185,7 +185,8 @@
   .foot{max-width:1000px;margin:14px auto 0;font-size:12px;color:var(--ink-2);text-align:center;line-height:1.6}
   /* laptop keeps 1000px; big desktop screens get room for the wide tables */
   @media (min-width:1440px){ .wrap{max-width:1200px} main{padding:26px} }
-  @media (max-width:760px){
+  /* phones and iPads in portrait (744–834px) get the card layout; tables need ≥900px */
+  @media (max-width:899px){
     body{padding:0}
     .wrap{border:none;border-radius:0;min-height:100dvh}
     header{position:sticky;top:0;z-index:12;background:var(--card);
