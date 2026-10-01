@@ -147,6 +147,28 @@
         padding:10px 12px;margin-top:14px}
   .footnote{max-width:430px;width:100%;margin:14px auto 0;font-size:12px;color:var(--ink-2);text-align:center;line-height:1.6}
 
+  /* bottom menu — phones only; on desktop the page already shows everything */
+  .bnav{display:none}
+  .bnav button{position:relative;border:none;background:none;font:inherit;display:flex;flex-direction:column;
+               align-items:center;gap:3px;padding:6px 2px 4px;color:var(--ink-3);font-size:10.5px;cursor:pointer;
+               -webkit-tap-highlight-color:transparent}
+  .bnav button[aria-current="page"]{color:var(--ink)}
+  .bnav button[aria-current="page"] svg{stroke-width:2.1}
+  .bnav svg{width:23px;height:23px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+  .bnav .bb{position:absolute;top:1px;left:calc(50% + 6px);min-width:17px;height:17px;padding:0 5px;border-radius:9px;
+            background:var(--stop);color:#fff;font-size:10px;font-weight:600;line-height:17px;text-align:center}
+  .bnav button:focus-visible{outline:2px solid var(--signal);outline-offset:-2px;border-radius:10px}
+  .olist{display:flex;flex-direction:column;gap:10px;margin-top:12px}
+  .orow{display:flex;align-items:center;gap:12px;text-align:left;width:100%;border:1px solid var(--line);border-radius:14px;
+        background:var(--card);padding:13px 14px;font:inherit;color:var(--ink);cursor:pointer}
+  .orow .ono{font-family:'Unbounded';font-size:12.5px;letter-spacing:.5px}
+  .orow .osub{font-size:12px;color:var(--ink-3);margin-top:3px}
+  .orow b{margin-left:auto;font-family:'Unbounded';font-size:12.5px;font-weight:400;white-space:nowrap}
+  .empty{text-align:center;color:var(--ink-3);font-size:13.5px;line-height:1.6;padding:36px 10px 18px}
+  .clink{display:flex;align-items:center;gap:12px;border:1px solid var(--line);border-radius:14px;padding:14px;
+         margin-top:10px;color:var(--ink);text-decoration:none;font-size:14px}
+  .clink small{display:block;color:var(--ink-3);font-size:12px;margin-top:2px}
+
   /* On a phone the frame is noise — the page IS the app. */
   @media (max-width:520px){
     body{padding:0;background:var(--card);display:block}
@@ -161,6 +183,11 @@
     .opt{padding:10px 15px;font-size:14px}
     .footnote{padding:0 18px 22px;margin-top:0;background:var(--card)}
     input,textarea{font-size:16px}           /* <16px makes iOS Safari zoom on focus */
+    .bnav{display:grid;grid-template-columns:repeat(4,1fr);position:fixed;left:0;right:0;bottom:0;z-index:40;
+          background:rgba(255,255,255,.94);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);
+          border-top:1px solid var(--line);padding:4px 6px calc(4px + env(safe-area-inset-bottom))}
+    .bnav.hide{display:none}
+    body{padding-bottom:calc(62px + env(safe-area-inset-bottom))}
   }
 
   /* entrance: cards rise into place as they scroll in */
@@ -219,6 +246,7 @@
 Загварын нэр, хийцлэл, хэмжээ, үнэ, салбар нь <b>түр өгөгдөл</b>.<br>
 <a href="admin.html" style="color:var(--ink-2)">Админ самбар үзэх →</a></p>
 </div>
+<nav class="bnav" id="bnav" aria-label="Үндсэн цэс"></nav>
 
 <script>
 const PLACEHOLDER = 'data:image/svg+xml;utf8,' + encodeURIComponent(
@@ -364,12 +392,79 @@ const mnt = n => n.toLocaleString('en-US').replace(/,/g,' ')+'₮';
 
 // ── state ─────────────────────────────────────────────────────────
 let view={name:'catalog'}, cart=[], order=null, sel={}, method='delivery', branch=null;
+const myOrders=[];                     // orders paid in this visit, newest first
 const app=document.getElementById('app');
 const go=v=>{view=v;render()};
 
+// ── bottom menu (phones) ──────────────────────────────────────────
+const NAV_ICONS = {
+  shop:  '<path d="M4 9.5 5.5 4h13L20 9.5M4 9.5h16M4 9.5V20h16V9.5M9.5 20v-5.5h5V20"/>',
+  cart:  '<path d="M3.5 4.5h2l2.2 10.2a1.5 1.5 0 0 0 1.5 1.2h8.1a1.5 1.5 0 0 0 1.5-1.1L20.5 8H6.4"/><circle cx="9.5" cy="19.5" r="1.2"/><circle cx="17" cy="19.5" r="1.2"/>',
+  orders:'<path d="M6.5 3.5h11v17l-2.75-1.6-2.75 1.6-2.75-1.6-2.75 1.6zM9.5 8h5M9.5 11.5h5M9.5 15h3"/>',
+  contact:'<path d="M4.5 5.5h15v10h-9l-4.5 3.5v-3.5h-1.5z"/><path d="M8.5 10.5h.01M12 10.5h.01M15.5 10.5h.01"/>',
+};
+const NAV = [
+  ['shop',    'Дэлгүүр',     ['catalog','model'],   ()=>({name:'catalog'})],
+  ['cart',    'Сагс',        ['cart','check'],      ()=>({name:'cart'})],
+  ['orders',  'Захиалга',    ['orders','ticket'],   ()=>({name:'orders'})],
+  ['contact', 'Холбоо барих',['contact'],           ()=>({name:'contact'})],
+];
+function renderNav(){
+  const el = document.getElementById('bnav');
+  if (!el) return;
+  el.classList.toggle('hide', view.name === 'qpay');   // don't invite leaving mid-payment
+  const n = cart.reduce((s,l)=>s+l.qty,0);
+  el.innerHTML = NAV.map(([k,label,views]) => {
+    const here = views.includes(view.name);
+    const badge = k==='cart' && n ? `<span class="bb">${n>99?'99+':n}</span>` : '';
+    return `<button onclick="navTo('${k}')" ${here?'aria-current="page"':''} aria-label="${label}${k==='cart'&&n?`, ${n} бараа`:''}">
+      <svg viewBox="0 0 24 24" aria-hidden="true">${NAV_ICONS[k]}</svg>${badge}<span>${label}</span></button>`;
+  }).join('');
+}
+function navTo(k){
+  const item = NAV.find(x => x[0] === k);
+  if (!item) return;
+  if (k === 'orders' && view.name === 'ticket') order = null;
+  go(item[3]());
+  window.scrollTo(0, 0);
+}
+
+function ordersView(){
+  app.innerHTML = `
+    <div class="axis" style="margin-top:4px">Миний захиалга</div>
+    ${myOrders.length ? `<div class="olist">${myOrders.map((o,i)=>`
+      <button class="orow" onclick="order=myOrders[${i}];go({name:'ticket'})">
+        <div><div class="ono">${o.no}</div>
+          <div class="osub">${o.lines.reduce((s,l)=>s+l.qty,0)} хос · ${o.method==='pickup' ? 'Салбараас авах' : 'Хүргэлт'}</div></div>
+        <b>${mnt(o.total)}</b></button>`).join('')}</div>
+      <div class="note">Захиалгын дугаараар явцаа хянана. Чат руу бичих, зураг илгээх шаардлагагүй.</div>`
+    : `<div class="empty">Одоогоор захиалга алга.<br>Таалагдсан загвараа сонгоод QPay-ээр төлөхөд энд гарна.</div>
+       <button class="btn" onclick="navTo('shop')">Загвар үзэх</button>`}
+  `;
+}
+
+function contactView(){
+  app.innerHTML = `
+    <div class="axis" style="margin-top:4px">Холбоо барих</div>
+    <a class="clink" href="https://m.me/toohuubrand" target="_blank" rel="noopener">
+      <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true">${NAV_ICONS.contact}</svg>
+      <span>Messenger-ээр бичих<small>Хэмжээ, хийцлэлийн талаар асуух</small></span></a>
+    <a class="clink" href="https://facebook.com/toohuubrand" target="_blank" rel="noopener">
+      <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M14 8.5h2V5h-2.5A3.5 3.5 0 0 0 10 8.5V11H8v3.5h2V21h3.5v-6.5H16l.5-3.5h-3V9a.5.5 0 0 1 .5-.5z"/></svg>
+      <span>Facebook хуудас<small>facebook.com/toohuubrand</small></span></a>
+    <div class="axis">Салбар</div>
+    ${BRANCHES.map(b=>`<div class="clink"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M12 21s-6.5-5.6-6.5-11a6.5 6.5 0 0 1 13 0C18.5 15.4 12 21 12 21z"/><circle cx="12" cy="10" r="2.3"/></svg>
+      <span>${b.name}<small>${b.address}</small></span></div>`).join('')}
+  `;
+}
+
 function render(){
   const v=view;
+  renderNav();
   if(v.name==='catalog'){ catalogView(); reveal(); return; }
+  if(v.name==='orders')  return ordersView();
+  if(v.name==='contact') return contactView();
+  if(v.name==='ticket' && !order){ view={name:'orders'}; return render(); }   // nothing selected -> list
   if(v.name==='model')   return modelView(v.id);
   if(v.name==='cart')    return cartView();
   if(v.name==='check')   return checkView();
@@ -594,6 +689,7 @@ function simulatePay(){
     order.paid=true;
     // stock only moves after QPay confirms
     for(const l of order.lines){ if(l.src && INV[l.vid][l.src]) INV[l.vid][l.src] -= l.qty; }
+    if (!myOrders.includes(order)) myOrders.unshift(order);
     cart=[]; go({name:'ticket'});
   },1400);
 }
