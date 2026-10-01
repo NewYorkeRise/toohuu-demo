@@ -183,6 +183,8 @@
   .thumb{width:40px;height:40px;border-radius:8px;object-fit:cover;background:var(--img)}
   .rowflex{display:flex;align-items:center;gap:10px}
   .foot{max-width:1000px;margin:14px auto 0;font-size:12px;color:var(--ink-2);text-align:center;line-height:1.6}
+  /* laptop keeps 1000px; big desktop screens get room for the wide tables */
+  @media (min-width:1440px){ .wrap{max-width:1200px} main{padding:26px} }
   @media (max-width:760px){
     body{padding:0}
     .wrap{border:none;border-radius:0;min-height:100dvh}
