@@ -488,9 +488,9 @@ function renderNav(){
   const top = document.getElementById('tnav');            // laptop / desktop
   if (top) top.innerHTML = NAV.map(([k,label,views]) => {
     const here = views.includes(view.name);
-    return `<button onclick="navTo('${k}')" ${here?'aria-current="page"':''}>
+    return `<button onclick="navTo('${k}')" ${here?'aria-current="page"':''} aria-label="${label}${k==='cart'&&n?`, ${n} бараа`:''}">
       <svg viewBox="0 0 24 24" aria-hidden="true">${NAV_ICONS[k]}</svg><span>${label}</span>${
-      k==='cart' && n ? `<span class="bb" aria-label="${n} бараа">${n>99?'99+':n}</span>` : ''}</button>`;
+      k==='cart' && n ? `<span class="bb" aria-hidden="true">${n>99?'99+':n}</span>` : ''}</button>`;
   }).join('');
   const el = document.getElementById('bnav');             // phone / tablet
   if (!el) return;
