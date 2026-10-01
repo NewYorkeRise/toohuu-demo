@@ -73,6 +73,7 @@
   .card:focus-visible{outline:2px solid var(--signal);outline-offset:2px}
   .ph{aspect-ratio:1;width:100%;object-fit:cover;display:block;background:var(--img)}
   .cb{padding:9px 10px 11px}
+  .ctype{font-size:10px;letter-spacing:1.2px;text-transform:uppercase;color:var(--ink-3);margin-bottom:3px}
   .cn{font-size:12.5px;font-weight:500;line-height:1.3}
   .cp{font-family:'Unbounded';font-size:12.5px;margin-top:5px}
   .tag{display:inline-block;font-size:10px;font-weight:600;padding:2px 6px;border-radius:5px;margin-top:6px}
@@ -342,11 +343,27 @@ const BRANCHES = [
 
 // ── catalog: 9 models from the Drive folder (1-x … 9-x) ──────────
 // Photos are real. Names, prices, options and stock are PLACEHOLDER.
-const AXES = [
-  { name:'Хийцлэл', position:1, values:['Оёмол','Давхар эсгий','Арьсан хормойтой'] },
-  { name:'Өнгө',    position:2, values:['Хар','Бор','Саарал'] },
-  { name:'Хэмжээ',  position:3, values:['36','37','38','39','40','41','42','43'] },
-];
+// Each product type has its own options and its own unit.
+// Socks and rug option values are PLACEHOLDER until TOOHUU confirms the real ones.
+const TYPES = {
+  boot:  { label:'Гутал',  unit:'хос', axes:[
+           { name:'Хийцлэл', values:['Оёмол','Давхар эсгий','Арьсан хормойтой'] },
+           { name:'Өнгө',    values:['Хар','Бор','Саарал'] },
+           { name:'Хэмжээ',  values:['36','37','38','39','40','41','42','43'], kids:['26','27','28','29','30','31','32','33'] } ],
+           delta: o => (o['Хийцлэл']==='Давхар эсгий'?25000:o['Хийцлэл']==='Арьсан хормойтой'?40000:0) + (+o['Хэмжээ']>=42?10000:0),
+           desc:'Монгол эсгий. Үйлдвэрийн шууд бүтээгдэхүүн. Салбараас авах эсвэл хүргэлтээр.' },
+  socks: { label:'Оймс',   unit:'хос', axes:[
+           { name:'Өнгө',    values:['Цагаан','Саарал','Бор'] },
+           { name:'Хэмжээ',  values:['S (35–37)','M (38–40)','L (41–43)'], kids:['XS (26–29)','S (30–33)'] } ],
+           delta: o => /^L/.test(o['Хэмжээ']) ? 3000 : 0,
+           desc:'Эсгий оймс. Гутал дотор өмсөхөд дулаан, хөлс шингээнэ.' },
+  rug:   { label:'Ширдэг', unit:'ширхэг', axes:[
+           { name:'Хээ',     values:['Өлзий','Эвэр','Хас'] },
+           { name:'Хэмжээ',  values:['60×90 см','90×150 см','120×180 см','200×300 см'] } ],
+           delta: o => ({'90×150 см':140000,'120×180 см':290000,'200×300 см':690000})[o['Хэмжээ']] || 0,
+           desc:'Гар аргаар сийрсэн эсгий ширдэг. Хэмжээгээ сонгоно уу.' },
+};
+const unitOf = p => (TYPES[p.type] || TYPES.boot).unit;
 // One entry per Drive folder (Design 001–010). Grouping comes from the folders, not a guess.
 const RAW = [
   { n:1, price:180000, cat:'main', hot:true, fresh:false, imgs:['1XInpyWSy14fpSQ0G6MQLm-vxJ9H-_Rgf','1K8rGKyCmZTZ4Fdo-H9NhhUb9ijftSJS1','1Aemf9vfdwuROzIzLmXrBy5cEldQ6ZkMJ'] },   // Design 001 — 1.png, 2.png, 3.png
@@ -359,12 +376,20 @@ const RAW = [
   { n:8, price:190000, cat:'main', hot:false, fresh:false, imgs:['1L8daKWwJU_yJbTccsUu5nk1LWHYxpnnn','1Xmuj_FtidWGs7y3UENG4oil0zp9LSpOS'] },   // Design 008 — 21.png, 22.png
   { n:9, price:220000, cat:'main', hot:false, fresh:true, imgs:['1jZlhurFrT06tZPeb93k4DGsGg2Mt1VyK','1HFT_8ruy2nRmjGhic0jUE6xEWiBAdxDb'] },   // Design 009 — 31.png, 32.png
   { n:10, price:205000, cat:'main', hot:false, fresh:false, imgs:['1YUPllVUGt2oTQ3Mj_4VrvnuMeEDA1T7i','1f-g_OW6iQDVsS9D7GyNQMbD2X9F6Fzwx'] },   // Design 010 — 33.png, 34.png
+  // PLACEHOLDER products until real socks / rug photos and prices are supplied
+  { n:11, type:'socks', price:25000,  cat:'main', hot:false, fresh:true,  imgs:[] },
+  { n:12, type:'socks', price:19000,  cat:'kids', hot:false, fresh:false, imgs:[] },
+  { n:13, type:'rug',   price:180000, cat:'main', hot:true,  fresh:false, imgs:[] },
+  { n:14, type:'rug',   price:210000, cat:'main', hot:false, fresh:true,  imgs:[] },
 ];
 
 // Two are real categories (a boot belongs to exactly one).
 // Two are flags (a kids' boot can be new AND in demand).
 const FILTERS = [
   { key:'all',   label:'Бүгд',            test:()=>true },
+  { key:'boot',  label:'Гутал',     test:p=>p.type==='boot' },
+  { key:'socks', label:'Оймс',      test:p=>p.type==='socks' },
+  { key:'rug',   label:'Ширдэг',    test:p=>p.type==='rug' },
   { key:'hot',   label:'Эрэлттэй',        test:p=>p.hot },
   { key:'fresh', label:'Шинэ',      test:p=>p.fresh },
   { key:'main',  label:'Үндсэн',    test:p=>p.category==='main' },
@@ -378,36 +403,30 @@ const rnd = n => { seed = (seed * 1103515245 + 12345) & 0x7fffffff; return seed 
 
 const CATALOG = [], INV = {};
 for (const r of RAW) {
-  // A kids' boot does not come in size 43. The axis values depend on the category.
-  const axes = AXES.map(a => ({
-    ...a,
-    values: a.name === 'Хэмжээ' && r.cat === 'kids'
-      ? ['26','27','28','29','30','31','32','33']
-      : [...a.values],
-  }));
+  const type = r.type || 'boot', T = TYPES[type];
+  // Kids' sizes differ (a kids' boot does not come in size 43).
+  const axes = T.axes.map(a => ({ name:a.name, values:[...(r.cat === 'kids' && a.kids ? a.kids : a.values)] }));
+  let combos = [{}];
+  for (const a of axes) combos = combos.flatMap(c => a.values.map(v => ({ ...c, [a.name]: v })));
   const variants = [];
-  for (const h of axes[0].values) for (const c of axes[1].values) for (const s of axes[2].values) {
-    if (rnd(10) < 3) continue;                       // the factory doesn't make every combination
-    const id = `m${r.n}-${h[0]}${c[0]}${s}`;
-    const pre = rnd(10) < 2;                         // some pairs are made to order
-    variants.push({
-      id, sku:id.toUpperCase(),
-      options:{ 'Хийцлэл':h, 'Өнгө':c, 'Хэмжээ':s },
-      price_delta: (h==='Давхар эсгий'?25000:h==='Арьсан хормойтой'?40000:0) + (+s>=42?10000:0),
-      is_preorder: pre,
-    });
+  combos.forEach((options, k) => {
+    if (rnd(10) < 3) return;                         // the workshop doesn't make every combination
+    const id = `m${r.n}-${k}`;
+    const pre = rnd(10) < 2;                         // some items are made to order
+    variants.push({ id, sku:`TH-${r.n}-${k}`, options, price_delta:T.delta(options), is_preorder:pre });
     INV[id] = {};
     if (!pre) {
       const a = rnd(4), b = rnd(3);
       if (a) INV[id].b1 = a;
       if (b) INV[id].b2 = b;
     }
-  }
+  });
   CATALOG.push({
-    id:`m${r.n}`, sku:`TH-${String(r.n).padStart(3,'0')}`, name:`Загвар ${String(r.n).padStart(2,'0')}`,
-    description:'Монгол эсгий. Үйлдвэрийн шууд бүтээгдэхүүн. Салбараас авах эсвэл хүргэлтээр.',
+    id:`m${r.n}`, sku:`TH-${String(r.n).padStart(3,'0')}`,
+    name: type==='boot' ? `Загвар ${String(r.n).padStart(2,'0')}` : `${T.label} ${String(r.n).padStart(2,'0')}`,
+    description:T.desc, type,
     base_price:r.price, is_active:true, option_axes:axes, variants,
-    images:r.imgs.map(IMG),
+    images: r.imgs.length ? r.imgs.map(IMG) : [PLACEHOLDER],
     category:r.cat, hot:r.hot, fresh:r.fresh,
   });
 }
@@ -448,9 +467,9 @@ function priceOrder(cart, method, branchId){
     } else if(v.is_preorder){
       src = null;
     } else {
-      if(total < l.qty) throw new Error(`${label(p,v)}: ${total} хос үлдсэн`);
+      if(total < l.qty) throw new Error(`${label(p,v)}: ${total} ${unitOf(p)} үлдсэн`);
       const cover = Object.entries(byBranch).filter(([,q])=>q>=l.qty).sort((a,b)=>b[1]-a[1]);
-      if(!cover.length) throw new Error(`${label(p,v)}: нэг салбарт ${l.qty} хос байхгүй. Тусад нь захиална уу.`);
+      if(!cover.length) throw new Error(`${label(p,v)}: нэг салбарт ${l.qty} ${unitOf(p)} байхгүй. Тусад нь захиална уу.`);
       src = cover[0][0];
     }
     const unit = p.base_price + v.price_delta;
@@ -516,7 +535,7 @@ function ordersView(){
     ${myOrders.length ? `<div class="olist">${myOrders.map((o,i)=>`
       <button class="orow" onclick="order=myOrders[${i}];go({name:'ticket'})">
         <div><div class="ono">${o.no}</div>
-          <div class="osub">${o.lines.reduce((s,l)=>s+l.qty,0)} хос · ${o.method==='pickup' ? 'Салбараас авах' : 'Хүргэлт'}</div></div>
+          <div class="osub">${o.lines.reduce((s,l)=>s+l.qty,0)} бараа · ${o.method==='pickup' ? 'Салбараас авах' : 'Хүргэлт'}</div></div>
         <b>${mnt(o.total)}</b></button>`).join('')}</div>
       <div class="note">Захиалгын дугаараар явцаа хянана. Чат руу бичих, зураг илгээх шаардлагагүй.</div>`
     : `<div class="empty">Одоогоор захиалга алга.<br>Таалагдсан загвараа сонгоод QPay-ээр төлөхөд энд гарна.</div>
@@ -571,13 +590,13 @@ function catalogView(){
       ].join('');
       const tag = stock===0 ? '<span class="tag pre">Захиалгаар</span>'
                 : stock<=4  ? '<span class="tag low">Цөөхөн үлдсэн</span>'
-                : `<span class="tag ok">${stock} хос бэлэн</span>`;
+                : `<span class="tag ok">${stock} ${unitOf(p)} бэлэн</span>`;
       return `<button class="card" onclick="go({name:'model',id:'${p.id}'})">
         <div style="position:relative">
           <img class="ph" src="${p.images[0]}" alt="${p.name}" loading="lazy" onerror="${imgFallback}">
           ${flags ? `<div class="flags">${flags}</div>` : ''}
         </div>
-        <div class="cb"><div class="cn">${p.name}</div>
+        <div class="cb"><div class="ctype">${TYPES[p.type].label}</div><div class="cn">${p.name}</div>
           <div class="cp">${mnt(p.base_price)}-с</div>${tag}</div></button>`;
     }).join('')}</div>
     ${cart.length?`<button class="btn" onclick="go({name:'cart'})">Сагс (${cart.reduce((s,l)=>s+l.qty,0)}) — үргэлжлүүлэх</button>`:''}
@@ -647,7 +666,7 @@ function refreshOptions(p){
     box.innerHTML = `<div class="stockline no">Дууссан.</div>`;
   } else {
     const where = BRANCHES.filter(b=>byBranch[b.id]).map(b=>`${b.name}: ${byBranch[b.id]}`).join(' · ');
-    box.innerHTML = `<div class="stockline ok">${total} хос бэлэн — ${where}</div>`;
+    box.innerHTML = `<div class="stockline ok">${total} ${unitOf(p)} бэлэн — ${where}</div>`;
   }
 }
 
@@ -666,7 +685,7 @@ function addToCart(pid){
   if(missing.length){ e.textContent = `Сонгоогүй: ${missing.join(', ')}`; return; }
   const v = p.variants.find(x => p.option_axes.every(a => x.options[a.name] === sel[a.name]));
   if(!v){ e.textContent = 'Энэ хослол байхгүй байна.'; return; }
-  if(!v.is_preorder && avail(v.id).total === 0){ e.textContent = 'Энэ хос дууссан байна.'; return; }
+  if(!v.is_preorder && avail(v.id).total === 0){ e.textContent = 'Энэ хувилбар дууссан байна.'; return; }
   const i = cart.findIndex(l=>l.variant_id===v.id);
   if(i>=0) cart[i].qty++; else cart.push({product_id:p.id, variant_id:v.id, qty:1});
   go({name:'cart'});
