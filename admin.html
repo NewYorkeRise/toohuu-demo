@@ -203,7 +203,7 @@ async function loadFolder(){
     const files = ((await r.json()).files || [])
       .sort((a,b) => a.name.localeCompare(b.name, undefined, { numeric:true }));   // 2.png before 10.png
     if (!files.length){ d.imgState = 'error'; d.imgError = 'Энэ хавтсанд зураг алга.'; return render(); }
-    d.images = files.map(f => f.id); d.imgState = 'ok';
+    d.images = files.map(f => IMG(f.id)); d.imgState = 'ok';
   } catch(e){
     d.imgState = 'error'; d.imgError = 'Сүлжээний алдаа. Дахин оролдоно уу.';
   }
@@ -362,14 +362,14 @@ function productsView(){
     <div class="bar"><button class="btn signal" onclick="startDraft()">＋ Шинэ загвар нэмэх</button></div>
     <table>
       <thead><tr><th>Загвар</th><th>Ангилал</th><th>Тэмдэг</th><th class="num">Суурь үнэ</th>
-        <th class="num">Хувилбар</th><th class="num">Бэлэн</th><th>Төлөв</th></tr></thead>
+        <th class="num">Хувилбар</th><th class="num">Бэлэн</th><th>Төлөв</th><th></th></tr></thead>
       <tbody>${PRODUCTS.map(p=>{
         const stock = p.variants.filter(v=>!v.is_preorder)
           .reduce((s,v)=>s+Object.values(INV[v.id]||{}).reduce((a,q)=>a+q,0),0);
         return `<tr>
           <td data-l="Загвар"><div class="rowflex"><img class="thumb" src="${p.image}" alt="">
-              <div><b style="font-weight:500">${p.name}</b>
-              <div class="mono" style="color:var(--ink-3)">${p.sku}</div></div></div></td>
+              <div><b style="font-weight:500">${esc(p.name)}</b>
+              <div class="mono" style="color:var(--ink-3)">${esc(p.sku)}</div></div></div></td>
           <td data-l="Ангилал">${p.category==='kids'?'Хүүхдийн':'Үндсэн'}</td>
           <td data-l="Тэмдэг">${[p.hot?'<span class="pill hot">Эрэлттэй</span>':'',
                  p.fresh?'<span class="pill new">Шинэ</span>':''].join(' ') || '<span style="color:var(--ink-3)">—</span>'}</td>
@@ -377,27 +377,91 @@ function productsView(){
           <td class="num" data-l="Хувилбар">${p.variants.length}</td>
           <td class="num" data-l="Бэлэн">${stock}</td>
           <td data-l="Төлөв"><span class="pill ${p.is_active?'paid':'cancel'}">${p.is_active?'Идэвхтэй':'Хаагдсан'}</span></td>
+          <td data-l="Үйлдэл"><div style="display:flex;gap:6px;justify-content:flex-end">
+            <button class="btn ghost sm" onclick="startDraft('${p.id}')">Засах</button>
+            <button class="btn ghost sm" style="color:var(--stop)" onclick="deleteProduct('${p.id}')">Устгах</button>
+          </div></td>
         </tr>`;
       }).join('')}</tbody>
     </table>
   `;
 }
 
-// ── NEW PRODUCT — the part that actually matters ─────────────────
-function startDraft(){
-  draft = {
-    step:1,
-    name:'', sku:'', price:180000, description:'', folder:'', images:[], imgState:'', imgError:'',
-    category:'main', hot:false, fresh:false,
+// ── NEW / EDIT PRODUCT — the part that actually matters ──────────
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const comboKey = (axes, opts) => JSON.stringify(axes.map(a => opts[a.name]));
+
+// Ids must never be reused: after a delete, "length+1" would collide with a live product.
+const nextProductId = () => 'm' + (Math.max(0, ...PRODUCTS.map(p => +p.id.slice(1) || 0)) + 1);
+
+// Recover per-axis surcharges from existing variants. Prices are additive
+// (axis surcharges summed), so two variants that differ on one axis only
+// give that axis value's surcharge exactly.
+function fitDeltas(p){
+  return p.axes.map(a => {
+    const ref = a.values[0], deltas = { [ref]: 0 };
+    const others = p.axes.filter(x => x.name !== a.name);
+    const sig = v => JSON.stringify(others.map(x => v.options[x.name]));
+    const atRef = new Map(p.variants.filter(v => v.options[a.name] === ref).map(v => [sig(v), v.price_delta]));
+    for (const val of a.values.slice(1)) {
+      const pair = p.variants.find(v => v.options[a.name] === val && atRef.has(sig(v)));
+      deltas[val] = pair ? pair.price_delta - atRef.get(sig(pair)) : 0;
+    }
+    return { name: a.name, values: [...a.values], deltas };
+  });
+}
+
+function startDraft(pid){
+  const p = pid && PRODUCTS.find(x => x.id === pid);
+  draft = p ? {
+    step:1, editingId:p.id,
+    name:p.name, sku:p.sku, price:p.base_price, description:p.description || '',
+    folder:'', imgUrl:'', images:[...(p.images && p.images.length ? p.images : [p.image])], imgState:'', imgError:'',
+    category:p.category || 'main', hot:!!p.hot, fresh:!!p.fresh, active:p.is_active !== false,
+    axes: fitDeltas(p),
+    origValues: Object.fromEntries(p.axes.map(a => [a.name, [...a.values]])),
+    existing: new Map(p.variants.map(v => [comboKey(p.axes, v.options), v])),
+    combos:[],
+  } : {
+    step:1, editingId:null,
+    name:'', sku:'', price:180000, description:'', folder:'', imgUrl:'', images:[], imgState:'', imgError:'',
+    category:'main', hot:false, fresh:false, active:true,
     axes:[
       { name:'Хийцлэл', values:['Оёмол','Давхар эсгий'], deltas:{'Оёмол':0,'Давхар эсгий':25000} },
       { name:'Өнгө',    values:['Хар','Бор'],            deltas:{'Хар':0,'Бор':0} },
       { name:'Хэмжээ',  values:['38','39','40','41'],    deltas:{'38':0,'39':0,'40':0,'41':0} },
     ],
+    origValues:null, existing:new Map(),
     combos:[],
   };
   tab='newp'; render();
 }
+
+function deleteProduct(pid){
+  const p = PRODUCTS.find(x => x.id === pid);
+  if (!p) return;
+  if (!confirm(`"${p.name}" загварыг ${p.variants.length} хувилбартай нь устгах уу? Буцаах боломжгүй.`)) return;
+  p.variants.forEach(v => delete INV[v.id]);
+  PRODUCTS.splice(PRODUCTS.indexOf(p), 1);
+  render();
+}
+
+// A single image: a Drive *file* share link (needs no API key) or any https image URL.
+function driveImageUrl(input){
+  const s = String(input || '').trim();
+  if (/\/folders\//.test(s)) return { error:'Энэ бол хавтасны холбоос. Дээрх «Google Drive хавтас» талбарт оруулна уу.' };
+  const m = s.match(/\/file\/d\/([A-Za-z0-9_-]{10,})/) || s.match(/[?&]id=([A-Za-z0-9_-]{10,})/);
+  if (m) return { url: IMG(m[1]) };
+  if (/^https:\/\/\S+$/.test(s)) return { url: s };
+  return { error:'Зургийн холбоос буруу байна (https://… эсвэл Google Drive файлын холбоос).' };
+}
+function addImageUrl(){
+  const r = driveImageUrl(draft.imgUrl);
+  if (r.error){ draft.imgState='error'; draft.imgError=r.error; return render(); }
+  if (!draft.images.includes(r.url)) draft.images.push(r.url);
+  draft.imgUrl=''; draft.imgState=''; draft.imgError=''; render();
+}
+const removeImage = i => { draft.images.splice(i,1); render(); };
 
 function buildCombos(){
   const lists = draft.axes.map(a=>a.values);
@@ -407,9 +471,20 @@ function buildCombos(){
     for(const r of rows) for(const v of lists[i]) next.push({...r,[a.name]:v});
     rows = next;
   });
+  // Priority: what the admin already set in step 3 > the saved variant > a fresh default.
+  const prior = new Map(draft.combos.map(c => [comboKey(draft.axes, c.opts), c]));
   draft.combos = rows.map(opts=>{
+    const key = comboKey(draft.axes, opts);
     const delta = draft.axes.reduce((s,a)=>s+(a.deltas[opts[a.name]]||0),0);
-    return { opts, on:true, preorder:false, delta, stock:{b1:0,b2:0} };
+    const was = prior.get(key);
+    if (was) return { ...was, opts, delta };
+    const v = draft.existing.get(key);
+    if (v) return { opts, on:true, preorder:!!v.is_preorder, delta,
+                    stock:{ b1:(INV[v.id]||{}).b1||0, b2:(INV[v.id]||{}).b2||0 } };
+    // When editing, a combo built only from values that already existed was
+    // deliberately not made — keep it off. Combos using a newly added value start on.
+    const isNew = !draft.origValues || draft.axes.some(a => !(draft.origValues[a.name]||[]).includes(opts[a.name]));
+    return { opts, on:isNew, preorder:false, delta, stock:{b1:0,b2:0} };
   });
 }
 
@@ -420,32 +495,43 @@ function newProductView(){
 
   if(d.step===1){
     main.innerHTML = `
-      <h1>Шинэ загвар</h1>
+      <h1>${d.editingId ? 'Загвар засах' : 'Шинэ загвар'}</h1>
       <div class="steps" style="margin-top:14px">${stepBar}</div>
       <div class="cols">
         <div class="field"><label for="n">Загварын нэр</label>
-          <input id="n" value="${d.name}" placeholder="жишээ: Хантааз" oninput="draft.name=this.value"></div>
+          <input id="n" value="${esc(d.name)}" placeholder="жишээ: Хантааз" oninput="draft.name=this.value"></div>
         <div class="field"><label for="s">SKU</label>
-          <input id="s" value="${d.sku}" placeholder="TH-10" oninput="draft.sku=this.value.toUpperCase()"></div>
+          <input id="s" value="${esc(d.sku)}" placeholder="TH-10" oninput="draft.sku=this.value.toUpperCase()"></div>
       </div>
       <div class="cols">
         <div class="field"><label for="p">Суурь үнэ (₮)</label>
           <input id="p" type="number" value="${d.price}" oninput="draft.price=+this.value"></div>
         <div class="field"><label for="img">Google Drive хавтас</label>
           <div style="display:flex;gap:8px">
-            <input id="img" value="${d.folder}" placeholder="https://drive.google.com/drive/folders/…"
+            <input id="img" value="${esc(d.folder)}" placeholder="https://drive.google.com/drive/folders/…"
                    oninput="draft.folder=this.value" onkeydown="if(event.key==='Enter')loadFolder()">
             <button class="btn ghost sm" style="flex:none" onclick="loadFolder()"
                     ${d.imgState==='loading'?'disabled':''}>${d.imgState==='loading'?'Уншиж байна…':'Зураг татах'}</button>
           </div></div>
       </div>
       ${d.imgState==='error' ? `<div class="note warn" style="margin:0 0 14px">${d.imgError}</div>` : ''}
-      ${d.images.length ? `<div class="field"><label>Зураг (${d.images.length}) — эхнийх нь нүүр зураг, өөр зураг дээр дарж солино</label>
-        <div style="display:flex;flex-wrap:wrap;gap:8px">${d.images.map((id,i)=>`
-          <button onclick="setMainImage(${i})" title="Нүүр зураг болгох"
-            style="padding:0;border:2px solid ${i?'var(--line)':'var(--ink)'};border-radius:10px;background:none;cursor:pointer">
-            <img src="${IMG(id)}" alt="" style="width:64px;height:64px;object-fit:cover;border-radius:8px;display:block"></button>`).join('')}
-        </div></div>` : ''}
+      <div class="field"><label for="iu">Нэг зураг нэмэх (Drive файлын холбоос эсвэл https://…)</label>
+        <div style="display:flex;gap:8px">
+          <input id="iu" value="${esc(d.imgUrl)}" placeholder="https://drive.google.com/file/d/…"
+                 oninput="draft.imgUrl=this.value" onkeydown="if(event.key==='Enter')addImageUrl()">
+          <button class="btn ghost sm" style="flex:none" onclick="addImageUrl()">Нэмэх</button>
+        </div></div>
+      <div class="field"><label>Зураг (${d.images.length})${d.images.length ? ' — эхнийх нь нүүр зураг; өөр зураг дээр дарж солино, × устгана' : ''}</label>
+        ${d.images.length ? `<div style="display:flex;flex-wrap:wrap;gap:8px">${d.images.map((url,i)=>`
+          <div style="position:relative">
+            <button onclick="setMainImage(${i})" title="Нүүр зураг болгох"
+              style="padding:0;border:2px solid ${i?'var(--line)':'var(--ink)'};border-radius:10px;background:none;cursor:pointer;display:block">
+              <img src="${esc(url)}" alt="" style="width:64px;height:64px;object-fit:cover;border-radius:8px;display:block"></button>
+            <button onclick="removeImage(${i})" aria-label="Зураг устгах" title="Устгах"
+              style="position:absolute;top:-7px;right:-7px;width:22px;height:22px;border-radius:50%;border:1px solid var(--line);background:var(--card);cursor:pointer;font-size:13px;line-height:1">×</button>
+          </div>`).join('')}</div>`
+          : `<div style="font-size:12.5px;color:var(--ink-3)">Зураг алга — дэлгүүрт түр зураг харагдана.</div>`}
+      </div>
       <div class="cols3">
         <div class="field"><label for="cat">Ангилал</label>
           <select id="cat" onchange="draft.category=this.value">
@@ -459,8 +545,10 @@ function newProductView(){
           <label class="tick"><input type="checkbox" ${d.fresh?'checked':''}
             onchange="draft.fresh=this.checked"> Шинэ загвар гэж тэмдэглэх</label></div>
       </div>
+      <div class="field"><label class="tick"><input type="checkbox" ${d.active?'checked':''}
+        onchange="draft.active=this.checked"> Дэлгүүрт харуулах (идэвхтэй)</label></div>
       <div class="field"><label for="ds">Тайлбар</label>
-        <textarea id="ds" rows="2" oninput="draft.description=this.value">${d.description}</textarea></div>
+        <textarea id="ds" rows="2" oninput="draft.description=this.value">${esc(d.description)}</textarea></div>
       <div class="note"><b>Ангилал нэг л байна</b> — гутал үндсэн эсвэл хүүхдийн аль нэгэнд харьяалагдана.
         «Эрэлттэй», «Шинэ» бол ангилал биш <b>тэмдэг</b> — хүүхдийн гутал зэрэг шинэ, эрэлттэй байж болно.
         Тиймээс эдгээрийг ангилал болговол каталог эвдэрнэ.</div>
@@ -541,7 +629,7 @@ function newProductView(){
     <div class="bar">
       <button class="btn ghost" onclick="draft.step=2;render()">← Тэнхлэг засах</button>
       <button class="btn signal" ${on.length?'':'disabled'} onclick="saveDraft()">
-        ${on.length} хувилбар хадгалах</button>
+        ${d.editingId ? 'Өөрчлөлт хадгалах' : on.length+' хувилбар хадгалах'}</button>
     </div>
   `;
 }
@@ -563,17 +651,28 @@ const fillStock = n => { draft.combos.forEach(c=>{ if(c.on && !c.preorder){ c.st
 
 function saveDraft(){
   const d = draft;
-  const p = { id:'m'+(PRODUCTS.length+1), sku:d.sku, name:d.name, base_price:d.price,
-              image: d.images.length ? IMG(d.images[0]) : IMG(PHOTOS[0]), images: d.images.map(IMG), is_active:true,
+  const old = d.editingId && PRODUCTS.find(x => x.id === d.editingId);
+  const id = old ? old.id : nextProductId();
+  const p = { id, sku:d.sku, name:d.name, base_price:d.price, description:d.description,
+              image: d.images[0] || IMG(PHOTOS[0]), images:[...d.images], is_active:d.active,
               category:d.category, hot:d.hot, fresh:d.fresh,
               axes:d.axes.map(a=>({name:a.name, values:[...a.values]})), variants:[] };
+  const stamp = Date.now().toString(36);
+  const kept = new Set();
   d.combos.filter(c=>c.on).forEach((c,i)=>{
-    const id = `${p.id}-${i}`;
-    p.variants.push({ id, sku:`${d.sku}-${Object.values(c.opts).join('-')}`.toUpperCase(),
+    const prev = d.existing.get(comboKey(d.axes, c.opts));          // same option values -> same variant id
+    const vid = prev ? prev.id : `${id}-${stamp}-${i}`;
+    kept.add(vid);
+    p.variants.push({ id:vid, sku:`${d.sku}-${Object.values(c.opts).join('-')}`.toUpperCase(),
                       options:c.opts, price_delta:c.delta, is_preorder:c.preorder });
-    INV[id] = c.preorder ? {} : { b1:c.stock.b1, b2:c.stock.b2 };
+    INV[vid] = c.preorder ? {} : { b1:c.stock.b1, b2:c.stock.b2 };
   });
-  PRODUCTS.push(p);
+  if (old) {
+    old.variants.forEach(v => { if (!kept.has(v.id)) delete INV[v.id]; });   // drop stock of removed variants
+    PRODUCTS[PRODUCTS.indexOf(old)] = p;
+  } else {
+    PRODUCTS.push(p);
+  }
   setTab('products');
 }
 
