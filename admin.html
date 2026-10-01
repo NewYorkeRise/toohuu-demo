@@ -313,6 +313,30 @@ let seed=11; const rnd=n=>{seed=(seed*1103515245+12345)&0x7fffffff;return seed%n
 const PRODUCTS = [];
 const INV = {};   // variant_id -> { branch_id: qty }
 
+// ── product types ─────────────────────────────────────────────────
+// Default options when a new product of this type is created. Socks / rug values are PLACEHOLDER.
+const TYPES = {
+  boot:  { label:'Гутал',  unit:'хос', axes:[
+           { name:'Хийцлэл', values:['Оёмол','Давхар эсгий'], deltas:{'Давхар эсгий':25000} },
+           { name:'Өнгө',    values:['Хар','Бор'] },
+           { name:'Хэмжээ',  values:['38','39','40','41'] } ] },
+  socks: { label:'Оймс',   unit:'хос', axes:[
+           { name:'Өнгө',    values:['Цагаан','Саарал','Бор'] },
+           { name:'Хэмжээ',  values:['S (35–37)','M (38–40)','L (41–43)'], deltas:{'L (41–43)':3000} } ] },
+  rug:   { label:'Ширдэг', unit:'ширхэг', axes:[
+           { name:'Хээ',     values:['Өлзий','Эвэр','Хас'] },
+           { name:'Хэмжээ',  values:['60×90 см','90×150 см','120×180 см','200×300 см'],
+             deltas:{'90×150 см':140000,'120×180 см':290000,'200×300 см':690000} } ] },
+};
+const typeOf = p => TYPES[p && p.type] ? p.type : 'boot';
+const unitOf = p => TYPES[typeOf(p)].unit;
+const defaultAxes = t => TYPES[t].axes.map(a => ({ name:a.name, values:[...a.values],
+  deltas:Object.fromEntries(a.values.map(v => [v, (a.deltas||{})[v] || 0])) }));
+// Shown when a product has no photo yet (instead of borrowing another product's picture).
+const NOPHOTO = 'data:image/svg+xml;utf8,' + encodeURIComponent(
+  "<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><rect width='100%' height='100%' fill='#E4E0D8'/>" +
+  "<text x='50%' y='52%' font-family='sans-serif' font-size='18' fill='#B4AEA3' text-anchor='middle' dominant-baseline='middle' letter-spacing='3'>TOOHUU</text></svg>");
+
 function seedProducts(){
   const axes = [
     { name:'Хийцлэл', values:['Оёмол','Давхар эсгий','Арьсан хормойтой'] },
@@ -322,7 +346,7 @@ function seedProducts(){
   PHOTOS.forEach((img,i)=>{
     const kids = i >= 7;
     const p = { id:'m'+(i+1), sku:'TH-0'+(i+1), name:'Загвар '+(i+1), base_price:165000+rnd(9)*10000,
-                image:IMG(img), is_active:true, category: kids?'kids':'main',
+                image:IMG(img), is_active:true, category: kids?'kids':'main', type:'boot',
                 hot: [0,2,4,7].includes(i), fresh: [1,4,8].includes(i),
                 axes:axes.map(a=>({...a,values:[...a.values]})), variants:[] };
     for(const h of axes[0].values) for(const c of axes[1].values) for(const s of axes[2].values){
@@ -336,6 +360,22 @@ function seedProducts(){
     }
     PRODUCTS.push(p);
   });
+  // PLACEHOLDER socks and rugs until real photos and prices are supplied
+  [['socks','Оймс 01',25000,true],['socks','Оймс 02',19000,false],['rug','Ширдэг 01',180000,false],['rug','Ширдэг 02',210000,true]]
+    .forEach(([type,name,price,fresh], j) => {
+      const id = 'm' + (PRODUCTS.length + 1), axes = defaultAxes(type);
+      const p = { id, sku:'TH-'+(10+j), name, base_price:price, image:NOPHOTO, images:[], is_active:true,
+                  category:'main', type, hot:false, fresh, axes:axes.map(a=>({name:a.name, values:a.values})), variants:[] };
+      let combos = [{}];
+      for (const a of axes) combos = combos.flatMap(c => a.values.map(v => ({ ...c, [a.name]: v })));
+      combos.forEach((options, k) => {
+        const vid = `${id}-${k}`;
+        p.variants.push({ id:vid, sku:`${p.sku}-${k}`, options, is_preorder:false,
+                          price_delta: axes.reduce((s,a)=>s+(a.deltas[options[a.name]]||0),0) });
+        INV[vid] = { b1:rnd(5), b2:rnd(4) };
+      });
+      PRODUCTS.push(p);
+    });
 }
 seedProducts();
 
@@ -504,27 +544,37 @@ function ordersView(){
 const setFulfil = (i,v) => { ORDERS[i].fulfillment=v; render(); };
 
 // ── PRODUCTS ──────────────────────────────────────────────────────
+let typeFilter = 'all';
+const setTypeFilter = t => { typeFilter = t; render(); };
 function productsView(){
+  const list = PRODUCTS.filter(p => typeFilter === 'all' || typeOf(p) === typeFilter);
   main.innerHTML = `
     <h1>Бараа</h1>
     <p class="lede">Загвар бүр олон хувилбартай. Хувилбарыг гараар нэмэхгүй — матрицаас үүсгэнэ.</p>
-    <div class="bar"><button class="btn signal" onclick="startDraft()">＋ Шинэ загвар нэмэх</button></div>
+    <div class="bar"><button class="btn signal" onclick="startDraft()">＋ Шинэ бараа нэмэх</button></div>
+    <div class="vfilter" style="margin-top:14px"><span>Төрөл</span>
+      ${[['all','Бүгд'], ...Object.entries(TYPES).map(([k,t]) => [k, t.label])].map(([k,l]) => {
+        const n = k === 'all' ? PRODUCTS.length : PRODUCTS.filter(p => typeOf(p) === k).length;
+        return `<button class="fchip" aria-pressed="${typeFilter===k}" onclick="setTypeFilter('${k}')">${l} <span style="opacity:.55">${n}</span></button>`;
+      }).join('')}
+    </div>
     <table>
-      <thead><tr><th>Загвар</th><th>Ангилал</th><th>Тэмдэг</th><th class="num">Суурь үнэ</th>
+      <thead><tr><th>Загвар</th><th>Төрөл</th><th>Ангилал</th><th>Тэмдэг</th><th class="num">Суурь үнэ</th>
         <th class="num">Хувилбар</th><th class="num">Бэлэн</th><th>Төлөв</th><th></th></tr></thead>
-      <tbody>${PRODUCTS.map(p=>{
+      <tbody>${list.map(p=>{
         const stock = p.variants.filter(v=>!v.is_preorder)
           .reduce((s,v)=>s+Object.values(INV[v.id]||{}).reduce((a,q)=>a+q,0),0);
         return `<tr>
           <td data-l="Загвар"><div class="rowflex"><img class="thumb" src="${p.image}" alt="">
               <div><b style="font-weight:500">${esc(p.name)}</b>
               <div class="mono" style="color:var(--ink-3)">${esc(p.sku)}</div></div></div></td>
+          <td data-l="Төрөл">${TYPES[typeOf(p)].label}</td>
           <td data-l="Ангилал">${p.category==='kids'?'Хүүхдийн':'Үндсэн'}</td>
           <td data-l="Тэмдэг">${[p.hot?'<span class="pill hot">Эрэлттэй</span>':'',
                  p.fresh?'<span class="pill new">Шинэ</span>':''].join(' ') || '<span style="color:var(--ink-3)">—</span>'}</td>
           <td class="num" data-l="Суурь үнэ">${mnt(p.base_price)}</td>
           <td class="num" data-l="Хувилбар">${p.variants.length}</td>
-          <td class="num" data-l="Бэлэн">${stock}</td>
+          <td class="num" data-l="Бэлэн">${stock} ${unitOf(p)}</td>
           <td data-l="Төлөв"><span class="pill ${p.is_active?'paid':'cancel'}">${p.is_active?'Идэвхтэй':'Хаагдсан'}</span></td>
           <td data-l="Үйлдэл"><div style="display:flex;gap:6px;justify-content:flex-end">
             <button class="btn ghost sm" onclick="startDraft('${p.id}')">Засах</button>
@@ -567,6 +617,7 @@ function startDraft(pid){
     name:p.name, sku:p.sku, price:p.base_price, description:p.description || '',
     folder:'', imgUrl:'', images:[...(p.images && p.images.length ? p.images : [p.image])], imgState:'', imgError:'',
     category:p.category || 'main', hot:!!p.hot, fresh:!!p.fresh, active:p.is_active !== false, imgBusy:0,
+    type:typeOf(p),
     axes: fitDeltas(p),
     origValues: Object.fromEntries(p.axes.map(a => [a.name, [...a.values]])),
     existing: new Map(p.variants.map(v => [comboKey(p.axes, v.options), v])),
@@ -575,15 +626,19 @@ function startDraft(pid){
     step:1, editingId:null,
     name:'', sku:'', price:180000, description:'', folder:'', imgUrl:'', images:[], imgState:'', imgError:'',
     category:'main', hot:false, fresh:false, active:true, imgBusy:0,
-    axes:[
-      { name:'Хийцлэл', values:['Оёмол','Давхар эсгий'], deltas:{'Оёмол':0,'Давхар эсгий':25000} },
-      { name:'Өнгө',    values:['Хар','Бор'],            deltas:{'Хар':0,'Бор':0} },
-      { name:'Хэмжээ',  values:['38','39','40','41'],    deltas:{'38':0,'39':0,'40':0,'41':0} },
-    ],
+    type:'boot', axes:defaultAxes('boot'),
     origValues:null, existing:new Map(),
     combos:[],
   };
   tab='newp'; render();
+}
+
+function setDraftType(t){
+  if (!TYPES[t]) return;
+  draft.type = t;
+  if (!draft.editingId) { draft.axes = defaultAxes(t); draft.combos = []; draft.vf = {}; }
+  if (t === 'rug') draft.category = 'main';            // there are no kids' rugs
+  render();
 }
 
 function deleteProduct(pid){
@@ -694,7 +749,7 @@ function newProductView(){
 
   if(d.step===1){
     main.innerHTML = `
-      <h1>${d.editingId ? 'Загвар засах' : 'Шинэ загвар'}</h1>
+      <h1>${d.editingId ? 'Бараа засах' : 'Шинэ ' + TYPES[d.type].label.toLowerCase()}</h1>
       <div class="steps" style="margin-top:14px">${stepBar}</div>
       <div class="cols">
         <div class="field"><label for="n">Загварын нэр</label>
@@ -742,18 +797,26 @@ function newProductView(){
             <button class="btn ghost sm" style="flex:none" onclick="addImageUrl()">Нэмэх</button>
           </div></div>
       </details>
-      <div class="cols3">
-        <div class="field"><label for="cat">Ангилал</label>
+      <div class="cols">
+        <div class="field"><label for="ty">Барааны төрөл</label>
+          <select id="ty" onchange="setDraftType(this.value)">
+            ${Object.entries(TYPES).map(([k,t]) => `<option value="${k}" ${d.type===k?'selected':''}>${t.label}</option>`).join('')}
+          </select></div>
+        <div class="field">${d.type==='rug' ? '' : `<label for="cat">Ангилал</label>
           <select id="cat" onchange="draft.category=this.value">
             <option value="main" ${d.category==='main'?'selected':''}>Үндсэн загвар</option>
             <option value="kids" ${d.category==='kids'?'selected':''}>Хүүхдийн загвар</option>
-          </select></div>
+          </select>`}</div>
+      </div>
+      ${d.editingId ? '' : `<div class="note" style="margin:0 0 14px">Төрөл сонгоход тухайн барааны сонголтууд
+        (${TYPES[d.type].axes.map(a=>a.name).join(', ')}) автоматаар бэлдэгдэнэ. Дараагийн алхамд засаж болно.</div>`}
+      <div class="cols">
         <div class="field"><label>Эрэлттэй</label>
           <label class="tick"><input type="checkbox" ${d.hot?'checked':''}
             onchange="draft.hot=this.checked"> Эрэлттэй гэж тэмдэглэх</label></div>
         <div class="field"><label>Шинэ</label>
           <label class="tick"><input type="checkbox" ${d.fresh?'checked':''}
-            onchange="draft.fresh=this.checked"> Шинэ загвар гэж тэмдэглэх</label></div>
+            onchange="draft.fresh=this.checked"> Шинэ гэж тэмдэглэх</label></div>
       </div>
       <div class="field"><label class="tick"><input type="checkbox" ${d.active?'checked':''}
         onchange="draft.active=this.checked"> Дэлгүүрт харуулах (идэвхтэй)</label></div>
@@ -822,8 +885,8 @@ function newProductView(){
     <div class="bar" style="margin-top:12px">
       <button class="btn ghost sm" onclick="allOn(true)">Бүгдийг сонгох</button>
       <button class="btn ghost sm" onclick="allOn(false)">Бүгдийг салгах</button>
-      <button class="btn ghost sm" onclick="fillStock(3)">Салбар бүрт 3 хос</button>
-      <span class="vcount">${visible.length < d.combos.length ? `Харагдаж буй ${visible.length} · ` : ''}${on.length}/${d.combos.length} хувилбар · ${totalStock} хос</span>
+      <button class="btn ghost sm" onclick="fillStock(3)">Салбар бүрт 3 ${TYPES[d.type].unit}</button>
+      <span class="vcount">${visible.length < d.combos.length ? `Харагдаж буй ${visible.length} · ` : ''}${on.length}/${d.combos.length} хувилбар · ${totalStock} ${TYPES[d.type].unit}</span>
     </div>
     <div class="vlist">
       ${visible.map(i => { const c = d.combos[i], dis = c.preorder || !c.on ? 'disabled' : ''; return `
@@ -895,8 +958,8 @@ function saveDraft(){
   const old = d.editingId && PRODUCTS.find(x => x.id === d.editingId);
   const id = old ? old.id : nextProductId();
   const p = { id, sku:d.sku, name:d.name, base_price:d.price, description:d.description,
-              image: d.images[0] || IMG(PHOTOS[0]), images:[...d.images], is_active:d.active,
-              category:d.category, hot:d.hot, fresh:d.fresh,
+              image: d.images[0] || NOPHOTO, images:[...d.images], is_active:d.active,
+              category:d.type === 'rug' ? 'main' : d.category, hot:d.hot, fresh:d.fresh, type:d.type,
               axes:d.axes.map(a=>({name:a.name, values:[...a.values]})), variants:[] };
   const stamp = Date.now().toString(36);
   const kept = new Set();
