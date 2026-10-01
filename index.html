@@ -423,7 +423,9 @@ for (const r of RAW) {
   });
   CATALOG.push({
     id:`m${r.n}`, sku:`TH-${String(r.n).padStart(3,'0')}`,
-    name: type==='boot' ? `Загвар ${String(r.n).padStart(2,'0')}` : `${T.label} ${String(r.n).padStart(2,'0')}`,
+    // socks / rugs are numbered within their own type: Ширдэг 01, Ширдэг 02 …
+    name: type==='boot' ? `Загвар ${String(r.n).padStart(2,'0')}`
+          : `${T.label} ${String(RAW.filter(x => x.type === type).indexOf(r) + 1).padStart(2,'0')}`,
     description:T.desc, type,
     base_price:r.price, is_active:true, option_axes:axes, variants,
     images: r.imgs.length ? r.imgs.map(IMG) : [PLACEHOLDER],
