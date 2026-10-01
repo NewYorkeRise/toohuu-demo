@@ -361,8 +361,8 @@ const BRANCHES = [
   { id:'b2', name:'Дэлгүүр', address:'Урт цагаан үйлчилгээний төвийн 3 давхар, 304 тоот' },
 ];
 
-// ── catalog: 9 models from the Drive folder (1-x … 9-x) ──────────
-// Photos are real. Names, prices, options and stock are PLACEHOLDER.
+// ── catalog: 10 models from the Drive folders (Design 001–010) ─────
+// Photos and boot names are confirmed. Prices, options and stock are PLACEHOLDER.
 // Each product type has its own options and its own unit.
 // Socks and rug option values are PLACEHOLDER until TOOHUU confirms the real ones.
 const TYPES = {
@@ -384,6 +384,13 @@ const TYPES = {
            desc:'Гар аргаар сийрсэн эсгий ширдэг. Хэмжээгээ сонгоно уу.' },
 };
 const unitOf = p => (TYPES[p.type] || TYPES.boot).unit;
+// Owner-supplied names follow the existing design order. The final five names
+// are reserved for future boot designs, when their photos are available.
+const BOOT_NAMES = [
+  'Хуцандай', 'Хургандай', 'Алагдай', 'Цоохондой', 'Хэнцхэн',
+  'Борголхон', 'Халзайдай', 'Халиундай', 'Бөдөнхөн', 'Сэгсээхэй',
+  'Бондоолой', 'Үйлэндэй', 'Хуруундай', 'Сөөмхөн', 'Өөлхийдэй'
+];
 // One entry per Drive folder (Design 001–010). Grouping comes from the folders, not a guess.
 const RAW = [
   { n:1, price:180000, cat:'main', hot:true, fresh:false, imgs:['1XInpyWSy14fpSQ0G6MQLm-vxJ9H-_Rgf','1K8rGKyCmZTZ4Fdo-H9NhhUb9ijftSJS1','1Aemf9vfdwuROzIzLmXrBy5cEldQ6ZkMJ'] },   // Design 001 — 1.png, 2.png, 3.png
@@ -444,7 +451,7 @@ for (const r of RAW) {
   CATALOG.push({
     id:`m${r.n}`, sku:`TH-${String(r.n).padStart(3,'0')}`,
     // socks / rugs are numbered within their own type: Ширдэг 01, Ширдэг 02 …
-    name: type==='boot' ? `Загвар ${String(r.n).padStart(2,'0')}`
+    name: type==='boot' ? BOOT_NAMES[r.n - 1]
           : `${T.label} ${String(RAW.filter(x => x.type === type).indexOf(r) + 1).padStart(2,'0')}`,
     description:T.desc, type,
     base_price:r.price, is_active:true, option_axes:axes, variants,
