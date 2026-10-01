@@ -59,6 +59,40 @@
   .tick{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--ink);letter-spacing:0;
         text-transform:none;margin:0;padding:9px 0}
   .tick input{width:16px;height:16px;accent-color:#171614;cursor:pointer}
+  /* variants: a list, not a 7-column table, so it works one-handed on a phone */
+  .vfilter{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:10px}
+  .vfilter>span{font-size:10.5px;letter-spacing:1.3px;text-transform:uppercase;color:var(--ink-3);min-width:70px}
+  .fchip{flex:none;border:1px solid var(--line);background:var(--card);border-radius:999px;padding:6px 12px;
+         font:inherit;font-size:12.5px;cursor:pointer;color:var(--ink)}
+  .fchip[aria-pressed="true"]{background:var(--ink);color:#fff;border-color:var(--ink)}
+  .vcount{font-size:12.5px;color:var(--ink-3);margin-left:auto}
+  .vlist{margin-top:12px;border:1px solid var(--line);border-radius:12px;overflow:hidden}
+  .vrow{display:grid;grid-template-columns:minmax(170px,1.3fr) 100px 118px 2fr;gap:10px 14px;align-items:center;
+        padding:9px 12px;border-bottom:1px solid var(--line-2)}
+  .vrow:last-child{border-bottom:none}
+  .vrow.off{background:#FBFAF8}
+  .vrow.off .vsel span,.vrow.off .vprice{opacity:.45}
+  label.vsel,label.vpre{display:flex;align-items:center;margin:0;letter-spacing:0;text-transform:none;cursor:pointer}
+  label.vsel{gap:10px;font-size:13.5px;color:var(--ink)}
+  label.vpre{gap:7px;font-size:12.5px;color:var(--ink-2)}
+  .vsel input,.vpre input{width:18px;height:18px;accent-color:#171614;flex:none;margin:0}
+  .vprice{font-family:'Unbounded';font-size:12.5px;text-align:right;white-space:nowrap}
+  .vstock{display:flex;flex-wrap:wrap;gap:8px 14px;justify-content:flex-end}
+  .stepper{display:flex;align-items:center;gap:4px}
+  .stepper span{font-size:11.5px;color:var(--ink-3);margin-right:2px;max-width:96px;overflow:hidden;
+                text-overflow:ellipsis;white-space:nowrap}
+  .stepper button{width:30px;height:30px;border:1px solid var(--line);border-radius:8px;background:var(--card);
+                  font-size:16px;line-height:1;cursor:pointer;color:var(--ink);padding:0}
+  .stepper button:disabled{opacity:.35;cursor:default}
+  .stepper input{width:54px;padding:5px 4px;text-align:center;font-size:13px}
+  .stepper.dim{opacity:.5}
+  .vempty{padding:18px;text-align:center;color:var(--ink-3);font-size:13px}
+  /* branches */
+  .blist{margin-top:14px;border:1px solid var(--line);border-radius:12px}
+  .brow{display:grid;grid-template-columns:1fr auto auto;gap:10px 12px;align-items:center;padding:10px 12px;
+        border-bottom:1px solid var(--line-2)}
+  .brow:last-child{border-bottom:none}
+  .bmeta{font-size:12px;color:var(--ink-3);white-space:nowrap}
   .gallery{display:grid;grid-template-columns:repeat(auto-fill,minmax(112px,1fr));gap:10px;padding:10px;
            border:1.5px dashed var(--line);border-radius:14px;background:#FBFAF8;transition:border-color .15s,background .15s}
   .gallery.drag{border-color:var(--signal);background:var(--signal-soft)}
@@ -115,12 +149,6 @@
         font-size:12.5px;background:#FBFAF8}
   .chip button{border:none;background:none;color:var(--ink-3);cursor:pointer;font-size:15px;line-height:1;padding:0}
 
-  .matrix{max-height:340px;overflow:auto;border:1px solid var(--line);border-radius:11px;margin-top:12px}
-  .matrix table{margin:0}
-  .matrix th{position:sticky;top:0;background:#FBFAF8;z-index:1}
-  .matrix td{padding:7px 10px}
-  .matrix input[type=number]{width:74px;padding:6px 8px;font-size:12.5px;text-align:right}
-  .matrix input[type=checkbox]{width:16px;height:16px;accent-color:#171614;cursor:pointer}
   .off td{opacity:.35}
   .off input[type=number]{pointer-events:none}
 
@@ -162,15 +190,21 @@
     td.num{justify-content:flex-start}
     td select{width:auto;flex:1}
 
-    /* the variant matrix stays a table — it needs its grid. Scroll it. */
-    .matrix table{display:table}
-    .matrix thead{display:table-header-group}
-    .matrix tbody{display:table-row-group}
-    .matrix tr{display:table-row;border:none;border-radius:0;padding:0;margin:0}
-    .matrix td{display:table-cell;padding:7px 10px;border-bottom:1px solid var(--line-2)}
-    .matrix td:before{content:none}
-    .matrix{overflow:auto;-webkit-overflow-scrolling:touch}
-    .matrix table{min-width:620px}
+    /* the save / continue buttons stay under the thumb while scrolling a long form */
+    .bar.actions{position:sticky;bottom:0;z-index:5;background:var(--card);margin:18px -15px 0;
+                 padding:12px 15px calc(12px + env(safe-area-inset-bottom));border-top:1px solid var(--line)}
+    .vfilter{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;padding-bottom:2px}
+    .vfilter::-webkit-scrollbar{display:none}
+    .vcount{flex-basis:100%;margin-left:0}
+    .vrow{grid-template-columns:1fr auto;gap:10px;padding:12px}
+    label.vpre,.vstock{grid-column:1/-1}
+    .vstock{justify-content:flex-start}
+    .vrow.off label.vpre,.vrow.off .vstock{display:none}
+    .stepper button{width:40px;height:40px;font-size:18px}
+    .stepper input{width:60px;padding:8px 4px}
+    .brow{grid-template-columns:1fr auto}
+    .bmeta{grid-column:1/-1;order:3;white-space:normal}
+
   }
 </style>
 </head>
@@ -179,7 +213,7 @@
   <header>
     <div class="mark"><img src="data:image/png;base64,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" alt="TOOHUU"></div>
     <div><div class="brand">TOOHUU — админ</div></div>
-    <div class="who">Хан-Уул · Баянгол салбар</div>
+    <div class="who" id="who"></div>
   </header>
   <nav id="nav"></nav>
   <main id="main"></main>
@@ -315,10 +349,78 @@ function renderNav(){
     ['orders',`Захиалга${pend?`<span class="badge">${pend}</span>`:''}`],
     ['products','Бараа'],
     ['stock','Үлдэгдэл'],
+    ['branches','Салбар'],
   ].map(([k,l])=>`<button aria-current="${tab===k}" onclick="setTab('${k}')">${l}</button>`).join('');
+  const who = document.getElementById('who');
+  if (who) who.textContent = BRANCHES.map(b => b.name).join(' · ') + ' салбар';
 }
-const setTab = t => { tab=t; draft=null; render(); };
-function render(){ renderNav(); ({orders:ordersView, products:productsView, stock:stockView, newp:newProductView}[tab])(); }
+const setTab = t => { tab=t; draft=null; branchMsg=null; render(); };
+function render(){ renderNav(); ({orders:ordersView, products:productsView, stock:stockView, branches:branchesView, newp:newProductView}[tab])(); }
+
+// ── BRANCHES ──────────────────────────────────────────────────────
+let branchMsg = null, newBranchName = '';
+const stockSum = st => BRANCHES.reduce((s,b) => s + (st[b.id] || 0), 0);
+const emptyStock = () => Object.fromEntries(BRANCHES.map(b => [b.id, 0]));
+const branchStock = bid => Object.values(INV).reduce((s,inv) => s + (inv[bid] || 0), 0);
+const openPickups = bid => ORDERS.filter(o => o.method==='pickup' && o.branch===bid && o.fulfillment!=='collected').length;
+const nextBranchId = () => 'b' + (Math.max(0, ...BRANCHES.map(b => +b.id.slice(1) || 0)) + 1);
+const cleanName = s => String(s || '').replace(/\s+/g, ' ').trim().slice(0, 40);
+const nameTaken = (name, exceptId) => BRANCHES.some(b => b.id !== exceptId && b.name.toLowerCase() === name.toLowerCase());
+function flash(kind, text){ branchMsg = { kind, text }; render(); }
+
+function addBranch(){
+  const name = cleanName(newBranchName);
+  if (!name) return flash('err', 'Салбарын нэр оруулна уу.');
+  if (nameTaken(name)) return flash('err', `«${name}» нэртэй салбар аль хэдийн байна.`);
+  BRANCHES.push({ id: nextBranchId(), name });
+  newBranchName = '';
+  flash('ok', `«${name}» салбар нэмэгдлээ. Үлдэгдлийг «Бараа → Засах»-аас оруулна.`);
+}
+function renameBranch(bid, value){
+  const b = BRANCHES.find(x => x.id === bid);
+  if (!b) return;
+  const name = cleanName(value);
+  if (!name) return flash('err', 'Салбарын нэр хоосон байж болохгүй.');
+  if (nameTaken(name, bid)) return flash('err', `«${name}» нэртэй салбар аль хэдийн байна.`);
+  if (name === b.name) return render();
+  const old = b.name; b.name = name;
+  flash('ok', `«${old}» → «${name}» болж өөрчлөгдлөө.`);
+}
+function deleteBranch(bid){
+  const b = BRANCHES.find(x => x.id === bid);
+  if (!b) return;
+  if (BRANCHES.length <= 1) return flash('err', 'Дор хаяж нэг салбар байх ёстой.');
+  const open = openPickups(bid);
+  if (open) return flash('err', `«${b.name}»-аас авах ${open} захиалга дуусаагүй байна. Эхлээд тэдгээрийг хүлээлгэн өгнө үү.`);
+  const st = branchStock(bid);
+  if (!confirm(`«${b.name}» салбарыг устгах уу?${st ? ` Тэнд бүртгэлтэй ${st} хос үлдэгдэл хамт устна.` : ''}`)) return;
+  Object.values(INV).forEach(inv => { delete inv[bid]; });
+  BRANCHES.splice(BRANCHES.indexOf(b), 1);
+  flash('ok', `«${b.name}» салбар устлаа.`);
+}
+
+function branchesView(){
+  main.innerHTML = `
+    <h1>Салбар</h1>
+    <p class="lede">Үлдэгдэл салбар бүрд тусдаа хадгалагдана. Худалдан авагч «салбараас авах»-ыг сонгоход эдгээр гарна.</p>
+    ${branchMsg ? `<div class="note ${branchMsg.kind==='err'?'warn':''}">${esc(branchMsg.text)}</div>` : ''}
+    <div class="blist">
+      ${BRANCHES.map(b => `<div class="brow">
+        <input value="${esc(b.name)}" aria-label="Салбарын нэр" maxlength="40"
+               onchange="renameBranch('${b.id}', this.value)" onkeydown="if(event.key==='Enter')this.blur()">
+        <span class="bmeta">${branchStock(b.id)} хос · хүлээгдэж буй ${openPickups(b.id)} захиалга</span>
+        <button class="btn ghost sm" style="color:var(--stop)" onclick="deleteBranch('${b.id}')"
+                ${BRANCHES.length<=1?'disabled':''}>Устгах</button>
+      </div>`).join('')}
+    </div>
+    <div class="bar">
+      <input id="nb" value="${esc(newBranchName)}" placeholder="Шинэ салбарын нэр" maxlength="40"
+             style="flex:1;min-width:180px" oninput="newBranchName=this.value" onkeydown="if(event.key==='Enter')addBranch()">
+      <button class="btn signal" onclick="addBranch()">＋ Салбар нэмэх</button>
+    </div>
+    <div class="note">Нэрийг засаад Enter дарах эсвэл талбараас гарахад хадгалагдана. Шинэ салбарын үлдэгдэл 0-ээс эхэлнэ.</div>
+  `;
+}
 
 // ── ORDERS ────────────────────────────────────────────────────────
 const FSTEPS = {
@@ -353,7 +455,7 @@ function ordersView(){
               <div><div>${o.item}</div><div style="color:var(--ink-3);font-size:12px">× ${o.qty}</div></div></div></td>
           <td data-l="Хэрэглэгч">${o.name}<div style="color:var(--ink-3);font-size:12px">${o.phone}</div></td>
           <td data-l="Авах">${o.method==='pickup'
-                ? BRANCHES.find(b=>b.id===o.branch).name+'<div style="color:var(--ink-3);font-size:12px">салбараас</div>'
+                ? esc((BRANCHES.find(b=>b.id===o.branch)||{name:'Хаагдсан салбар'}).name)+'<div style="color:var(--ink-3);font-size:12px">салбараас</div>'
                 : 'Хүргэлт<div style="color:var(--ink-3);font-size:12px">'+(o.fee?mnt(o.fee):'үнэгүй')+'</div>'}</td>
           <td class="num" data-l="Дүн">${mnt(o.total)}</td>
           <td data-l="Төлбөр"><span class="pill ${o.payment}">${o.payment==='paid'?'Төлөгдсөн':'Хүлээгдэж буй'}</span>
@@ -551,11 +653,11 @@ function buildCombos(){
     if (was) return { ...was, opts, delta };
     const v = draft.existing.get(key);
     if (v) return { opts, on:true, preorder:!!v.is_preorder, delta,
-                    stock:{ b1:(INV[v.id]||{}).b1||0, b2:(INV[v.id]||{}).b2||0 } };
+                    stock:Object.fromEntries(BRANCHES.map(b => [b.id, (INV[v.id]||{})[b.id]||0])) };
     // When editing, a combo built only from values that already existed was
     // deliberately not made — keep it off. Combos using a newly added value start on.
     const isNew = !draft.origValues || draft.axes.some(a => !(draft.origValues[a.name]||[]).includes(opts[a.name]));
-    return { opts, on:isNew, preorder:false, delta, stock:{b1:0,b2:0} };
+    return { opts, on:isNew, preorder:false, delta, stock:emptyStock() };
   });
 }
 
@@ -636,7 +738,7 @@ function newProductView(){
         Тиймээс эдгээрийг ангилал болговол каталог эвдэрнэ.</div>
       <div class="note">Суурь үнэ бол хамгийн хямд хувилбарын үнэ. Хийцлэл, том хэмжээний нэмэлт төлбөрийг
         дараагийн алхамд тэнхлэг тус бүрд өгнө — хувилбар бүрд биш.</div>
-      <div class="bar">
+      <div class="bar actions">
         <button class="btn ghost" onclick="setTab('products')">Болих</button>
         <button class="btn" ${!d.name||!d.sku?'disabled':''} onclick="draft.step=2;render()">Үргэлжлүүлэх →</button>
       </div>
@@ -665,7 +767,7 @@ function newProductView(){
       <div class="note warn"><b>${count} хувилбар</b> үүснэ. Гутлын админ самбар унадаг цэг яг энэ —
         ${count} мөрийг гараар оруулах боломжгүй. Дараагийн алхамд систем бүгдийг үүсгэнэ, чи зөвхөн
         <b>байхгүйг нь салгана</b>.</div>
-      <div class="bar">
+      <div class="bar actions">
         <button class="btn ghost" onclick="draft.step=1;render()">← Буцах</button>
         <button class="btn" onclick="buildCombos();draft.step=3;render()">${count} хувилбар үүсгэх →</button>
       </div>
@@ -673,47 +775,77 @@ function newProductView(){
     return;
   }
 
-  // step 3 — the matrix
+  // step 3 — the variants
+  const vf = d.vf || (d.vf = {});
+  const filterAxes = d.axes.slice(0, -1);                 // filter by construction/colour, scroll the sizes
+  filterAxes.forEach(a => { if (vf[a.name] && !a.values.includes(vf[a.name])) vf[a.name] = null; });
+  const last = d.axes[d.axes.length - 1];
+  const visible = visibleIdx();
   const on = d.combos.filter(c=>c.on);
-  const totalStock = on.reduce((s,c)=>s+c.stock.b1+c.stock.b2,0);
+  const totalStock = on.reduce((s,c)=>s+stockSum(c.stock),0);
   main.innerHTML = `
-    <h1>${d.name} — хувилбар</h1>
+    <h1>${esc(d.name)} — хувилбар</h1>
     <div class="steps" style="margin-top:14px">${stepBar}</div>
     <p class="lede">Үйлдвэрлэдэггүй хослолыг салга. Салбар бүрийн үлдэгдлийг оруул.
       Захиалгаар хийдэг хос үлдэгдэлгүй ч зарагдана — гэхдээ салбараас авах боломжгүй.</p>
+    ${filterAxes.map((a,ai)=>`<div class="vfilter"><span>${esc(a.name)}</span>
+      ${[-1, ...a.values.map((_,vi)=>vi)].map(vi=>`<button class="fchip"
+        aria-pressed="${vi<0 ? !vf[a.name] : vf[a.name]===a.values[vi]}"
+        onclick="setVF(${ai},${vi})">${vi<0 ? 'Бүгд' : esc(a.values[vi])}</button>`).join('')}
+    </div>`).join('')}
     <div class="bar" style="margin-top:12px">
       <button class="btn ghost sm" onclick="allOn(true)">Бүгдийг сонгох</button>
       <button class="btn ghost sm" onclick="allOn(false)">Бүгдийг салгах</button>
-      <button class="btn ghost sm" onclick="fillStock(3)">Бүх салбарт 3 хос</button>
-      <span style="font-size:12.5px;color:var(--ink-3);margin-left:auto">
-        ${on.length}/${d.combos.length} хувилбар · ${totalStock} хос</span>
+      <button class="btn ghost sm" onclick="fillStock(3)">Салбар бүрт 3 хос</button>
+      <span class="vcount">${visible.length < d.combos.length ? `Харагдаж буй ${visible.length} · ` : ''}${on.length}/${d.combos.length} хувилбар · ${totalStock} хос</span>
     </div>
-    <div class="matrix">
-      <table><thead><tr>
-        <th style="width:40px"></th>
-        ${d.axes.map(a=>`<th>${a.name}</th>`).join('')}
-        <th class="num">Үнэ</th><th style="width:70px">Захиалгаар</th>
-        ${BRANCHES.map(b=>`<th class="num" style="width:90px">${b.name}</th>`).join('')}
-      </tr></thead><tbody>
-      ${d.combos.map((c,i)=>`<tr class="${c.on?'':'off'}">
-        <td><input type="checkbox" ${c.on?'checked':''} onchange="draft.combos[${i}].on=this.checked;render()"></td>
-        ${d.axes.map(a=>`<td>${c.opts[a.name]}</td>`).join('')}
-        <td class="num">${mnt(d.price + c.delta)}</td>
-        <td><input type="checkbox" ${c.preorder?'checked':''}
-             onchange="draft.combos[${i}].preorder=this.checked;render()"></td>
-        ${BRANCHES.map(b=>`<td class="num"><input type="number" min="0" value="${c.stock[b.id]}"
-             ${c.preorder?'disabled':''} oninput="draft.combos[${i}].stock['${b.id}']=+this.value||0"></td>`).join('')}
-      </tr>`).join('')}
-      </tbody></table>
+    <div class="vlist">
+      ${visible.map(i => { const c = d.combos[i], dis = c.preorder || !c.on ? 'disabled' : ''; return `
+      <div class="vrow ${c.on?'':'off'}">
+        <label class="vsel"><input type="checkbox" ${c.on?'checked':''} onchange="draft.combos[${i}].on=this.checked;render()">
+          <span>${filterAxes.map(a=>esc(c.opts[a.name])).join(' · ')}${filterAxes.length?' · ':''}<b>${esc(c.opts[last.name])}</b></span></label>
+        <span class="vprice">${mnt(d.price + c.delta)}</span>
+        <label class="vpre"><input type="checkbox" ${c.preorder?'checked':''} ${c.on?'':'disabled'}
+          onchange="draft.combos[${i}].preorder=this.checked;render()"> Захиалгаар</label>
+        <div class="vstock">${BRANCHES.map(b=>`<div class="stepper ${dis?'dim':''}">
+          <span>${esc(b.name)}</span>
+          <button onclick="stepStock(${i},'${b.id}',-1)" ${dis} aria-label="${esc(b.name)}: хасах">−</button>
+          <input type="number" inputmode="numeric" min="0" value="${c.stock[b.id]||0}" ${dis}
+                 aria-label="${esc(b.name)} үлдэгдэл" onchange="setStock(${i},'${b.id}',this.value)">
+          <button onclick="stepStock(${i},'${b.id}',1)" ${dis} aria-label="${esc(b.name)}: нэмэх">+</button>
+        </div>`).join('')}</div>
+      </div>`; }).join('') || '<div class="vempty">Энэ шүүлтүүрт хувилбар алга.</div>'}
     </div>
     <div class="note">Үлдэгдэл <b>салбарт</b> хадгалагдана, дэлгүүрт биш. «3 хос үлдсэн» гэдэг нь
-      Хан-Уулд 1, Баянголд 2 бол худал — нэг ч салбар 3 хос илгээж чадахгүй.</div>
-    <div class="bar">
+      нэг салбарт 1, нөгөөд 2 бол худал — нэг ч салбар 3 хос илгээж чадахгүй.</div>
+    <div class="bar actions">
       <button class="btn ghost" onclick="draft.step=2;render()">← Тэнхлэг засах</button>
       <button class="btn signal" ${on.length?'':'disabled'} onclick="saveDraft()">
         ${d.editingId ? 'Өөрчлөлт хадгалах' : on.length+' хувилбар хадгалах'}</button>
     </div>
   `;
+}
+
+// Which variant rows the current filter shows; bulk buttons act on these only.
+function visibleIdx(){
+  const d = draft, vf = d.vf || {}, fa = d.axes.slice(0, -1);
+  return d.combos.map((_,i)=>i).filter(i => fa.every(a => !vf[a.name] || d.combos[i].opts[a.name] === vf[a.name]));
+}
+function setVF(ai, vi){
+  const a = draft.axes[ai];
+  draft.vf = draft.vf || {};
+  draft.vf[a.name] = vi < 0 ? null : a.values[vi];
+  render();
+}
+function stepStock(i, bid, delta){
+  const st = draft.combos[i].stock;
+  st[bid] = Math.max(0, (st[bid] || 0) + delta);
+  render();
+}
+function setStock(i, bid, value){
+  const n = Math.floor(Number(value));
+  draft.combos[i].stock[bid] = Number.isFinite(n) && n > 0 ? Math.min(n, 99999) : 0;
+  render();
 }
 
 function addVal(ai, v){
@@ -728,8 +860,9 @@ function rmVal(ai, vi){
   delete a.deltas[a.values[vi]];
   a.values.splice(vi,1); render();
 }
-const allOn = v => { draft.combos.forEach(c=>c.on=v); render(); };
-const fillStock = n => { draft.combos.forEach(c=>{ if(c.on && !c.preorder){ c.stock.b1=n; c.stock.b2=n; } }); render(); };
+const allOn = v => { visibleIdx().forEach(i => { draft.combos[i].on = v; }); render(); };
+const fillStock = n => { visibleIdx().forEach(i => { const c = draft.combos[i];
+  if (c.on && !c.preorder) BRANCHES.forEach(b => { c.stock[b.id] = n; }); }); render(); };
 
 function saveDraft(){
   const d = draft;
@@ -747,7 +880,7 @@ function saveDraft(){
     kept.add(vid);
     p.variants.push({ id:vid, sku:`${d.sku}-${Object.values(c.opts).join('-')}`.toUpperCase(),
                       options:c.opts, price_delta:c.delta, is_preorder:c.preorder });
-    INV[vid] = c.preorder ? {} : { b1:c.stock.b1, b2:c.stock.b2 };
+    INV[vid] = c.preorder ? {} : Object.fromEntries(BRANCHES.map(b => [b.id, c.stock[b.id] || 0]));
   });
   if (old) {
     old.variants.forEach(v => { if (!kept.has(v.id)) delete INV[v.id]; });   // drop stock of removed variants
