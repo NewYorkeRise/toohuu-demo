@@ -319,6 +319,57 @@
   .copy-status{min-height:1.5em;font-size:12px;color:var(--ok);margin-top:8px}
   .catalog-note{font-size:12px;line-height:1.5;color:var(--ink-2);margin:0 0 12px}
   .selection-count{font-size:14px;font-weight:600;white-space:nowrap;margin-left:auto}
+  .catalog-layout{display:grid;gap:20px;align-items:start}
+  .catalog-sidebar{border:1px solid var(--line);border-radius:14px;background:var(--subtle);min-width:0}
+  .filter-toggle{display:flex;justify-content:space-between;align-items:center;width:100%;padding:16px;
+    border:0;background:none;color:var(--ink);font:inherit;font-weight:600;cursor:pointer;text-align:left}
+  .filter-toggle span:last-child{font-size:12px;font-weight:400;color:var(--ink-2)}
+  .filter-body{padding:18px}
+  .filter-heading{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:16px}
+  .filter-heading h2{font:600 16px 'Golos Text',sans-serif}
+  .filter-clear{border:0;background:none;color:var(--ink-2);font:inherit;font-size:12px;cursor:pointer;text-decoration:underline;padding:7px 0}
+  .filter-clear:disabled{opacity:.4;cursor:default}
+  .filter-group{border:0;border-top:1px solid var(--line);padding:16px 0 0;margin:16px 0 0;min-width:0}
+  .filter-group legend{float:left;width:100%;font-size:13px;font-weight:600;margin-bottom:10px}
+  .filter-options{display:flex;flex-wrap:wrap;gap:6px;clear:both}
+  .filter-options.models{max-height:185px;overflow-y:auto;padding:3px;scrollbar-width:thin}
+  .filter-choice{display:inline-flex;align-items:center;gap:6px;min-height:36px;border:1px solid var(--line);
+    border-radius:8px;padding:7px 9px;background:var(--card);color:var(--ink-2);font:inherit;font-size:12px;cursor:pointer}
+  .filter-choice[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:var(--on-ink)}
+  .color-dot{width:12px;height:12px;border-radius:50%;border:1px solid #928C82;flex:none}
+  .catalog-main{min-width:0;scroll-margin-top:90px}
+  .filter-apply{display:none}
+  .catalog-toolbar{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}
+  .catalog-toolbar h2{font-size:19px}
+  .catalog-count{font-size:12px;color:var(--ink-2);margin-top:5px}
+  .catalog-sort{display:flex;align-items:center;gap:8px}
+  .catalog-sort label{font-size:12px;letter-spacing:0;text-transform:none;margin:0;color:var(--ink-2)}
+  .catalog-sort select{max-width:100%;padding:9px;border:1px solid var(--line);border-radius:9px;
+    font:inherit;font-size:13px;color:var(--ink);background:var(--card)}
+  .filter-search-label{font-size:12px;letter-spacing:0;text-transform:none;margin:0 0 7px;color:var(--ink-2)}
+  #catalog-search{font-size:16px;padding:11px}
+  .active-filters{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
+  .active-filters:empty{display:none}
+  .active-filter{border:1px solid var(--line);border-radius:999px;padding:7px 10px;font:inherit;font-size:12px;
+    color:var(--ink);background:var(--subtle);cursor:pointer}
+  .catalog-empty{border:1px dashed var(--line);border-radius:14px;padding:36px 20px;text-align:center;line-height:1.6}
+  .catalog-empty p{font-size:13px;color:var(--ink-2);margin:8px 0 16px}
+  .catalog-empty .btn{width:auto;padding:12px 20px;margin:0}
+  .filter-choice:focus-visible,.filter-clear:focus-visible,.filter-toggle:focus-visible,.active-filter:focus-visible,
+  .catalog-sort select:focus-visible{outline:2px solid var(--signal);outline-offset:2px}
+  @media(max-width:1023px){
+    .catalog-sidebar:not(.is-open) .filter-body{display:none}
+    .filter-body{border-top:1px solid var(--line)}
+    .filter-choice{min-height:42px;padding:9px 12px}
+    .filter-apply{display:block;position:sticky;bottom:calc(74px + env(safe-area-inset-bottom));box-shadow:0 4px 18px rgba(0,0,0,.15)}
+  }
+  @media(min-width:1024px){
+    .catalog-layout{grid-template-columns:250px minmax(0,1fr);gap:28px}
+    .catalog-sidebar{position:sticky;top:91px;max-height:calc(100dvh - 112px);overflow-y:auto;scrollbar-width:thin}
+    .filter-toggle{display:none}
+    .catalog-main .grid{grid-template-columns:repeat(3,minmax(0,1fr))}
+  }
+  @media(min-width:1440px){.catalog-layout{grid-template-columns:270px minmax(0,1fr)}.catalog-main .grid{grid-template-columns:repeat(4,minmax(0,1fr))}}
   #order-draft{width:100%;margin-top:8px;line-height:1.6;resize:vertical}
   @media(max-width:599px){
     .info-block{padding:15px}
@@ -412,20 +463,6 @@ const RAW = [
   { n:13, type:'rug',   price:180000, stock:3, cat:'main', hot:true,  fresh:false, imgs:[] },
   { n:14, type:'rug',   price:210000, stock:2, cat:'main', hot:false, fresh:true,  imgs:[] },
 ];
-
-// Two are real categories (a boot belongs to exactly one).
-// Two are flags (a kids' boot can be new AND in demand).
-const FILTERS = [
-  { key:'all',   label:'Бүгд',            test:()=>true },
-  { key:'boot',  label:'Загвар',    test:p=>p.type==='boot' },
-  { key:'socks', label:'Нэмэлт',    test:p=>p.type==='socks' },
-  { key:'rug',   label:'Гэр ахуй',  test:p=>p.type==='rug' },
-  { key:'hot',   label:'Эрэлттэй',        test:p=>p.hot },
-  { key:'fresh', label:'Шинэ',      test:p=>p.fresh },
-  { key:'main',  label:'Үндсэн',    test:p=>p.category==='main' },
-  { key:'kids',  label:'Хүүхдийн',  test:p=>p.category==='kids' },
-];
-let filter = 'all';
 
 // Deterministic pseudo-random so the demo is stable across reloads.
 let seed = 7;
@@ -587,7 +624,7 @@ function render(){
   const v=view;
   renderNav();
   app.classList.toggle('narrow', !['catalog','model'].includes(v.name));
-  if(v.name==='catalog'){ catalogView(); reveal(); return; }
+  if(v.name==='catalog'){ catalogView(); return; }
   if(v.name==='orders')  return ordersView();
   if(v.name==='contact') return contactView();
   if(v.name==='model')   return modelView(v.id);
@@ -597,21 +634,100 @@ function render(){
 }
 
 function catalogView(){
-  const shown = CATALOG.filter(FILTERS.find(f=>f.key===filter).test);
   app.innerHTML = `
-    <div class="tabs">${FILTERS.map(f=>{
-      const n = CATALOG.filter(f.test).length;
-      if (!n) return '';                      // no kids' models declared yet — don't show an empty tab
-      return `<button aria-pressed="${filter===f.key}" onclick="setFilter('${f.key}')">${f.label}
-        <em>${n}</em></button>`;
-    }).join('')}</div>
-    <p class="catalog-note">${CATALOG_NOTE}</p>
-    <div class="grid">${shown.map(p=>{
+    <div class="catalog-layout">
+      <aside class="catalog-sidebar ${filterPanelOpen?'is-open':''}" aria-label="Каталогийн шүүлтүүр">
+        <button class="filter-toggle" id="filter-toggle" aria-expanded="${filterPanelOpen}" aria-controls="filter-body" onclick="toggleFilterPanel()">
+          <span>Шүүлтүүр</span><span id="filter-summary"></span>
+        </button>
+        <div class="filter-body" id="filter-body">
+          <div class="filter-heading"><h2>Сонголтоо хийгээрэй</h2><button class="filter-clear" id="filter-reset" onclick="resetCatalogFilters()">Цэвэрлэх</button></div>
+          <label class="filter-search-label" for="catalog-search">Загварын нэрээр хайх</label>
+          <input type="search" id="catalog-search" placeholder="Нэрээр хайх…" value="${esc(catalogFilters.query)}" oninput="setCatalogQuery(this.value)">
+          ${CATALOG_GROUPS.map((g,i)=>`<fieldset class="filter-group"><legend>${g.label}</legend>
+            <div class="filter-options ${g.key==='model'?'models':''}">${g.values.map((v,j)=>`
+              <button class="filter-choice" id="filter-${i}-${j}" aria-pressed="false" onclick="toggleCatalogFilter(${i},${j})">
+                ${g.axis==='Өнгө'?`<span class="color-dot" aria-hidden="true" style="background:${COLOR_SWATCHES[v.value]||'#928C82'}"></span>`:''}${esc(v.label)}
+              </button>`).join('')}</div></fieldset>`).join('')}
+          <button class="btn filter-apply" id="filter-apply" onclick="showCatalogResults()"></button>
+        </div>
+      </aside>
+      <section class="catalog-main" aria-label="Загварууд">
+        <div class="catalog-toolbar"><div><h2>Загварууд</h2><p class="catalog-count" id="catalog-count" role="status" aria-live="polite" aria-atomic="true"></p></div>
+          <div class="catalog-sort"><label for="catalog-sort">Эрэмбэ</label><select id="catalog-sort" onchange="catalogFilters.sort=this.value;updateCatalogResults()">
+            <option value="default">Үндсэн</option><option value="price-asc">Үнэ өсөхөөр</option><option value="price-desc">Үнэ буурахаар</option><option value="name">Нэрээр</option>
+          </select></div>
+        </div>
+        <div class="active-filters" id="active-filters" aria-label="Сонгосон шүүлтүүрүүд"></div>
+        <p class="catalog-note">${CATALOG_NOTE}</p>
+        <div id="catalog-results"></div>
+        ${cart.length?`<button class="btn" onclick="go({name:'cart'})">Сагс (${cart.reduce((s,l)=>s+l.qty,0)}) — үргэлжлүүлэх</button>`:''}
+      </section>
+    </div>`;
+  document.getElementById('catalog-sort').value=catalogFilters.sort;
+  updateCatalogResults();
+}
+
+// OR within a group, AND between groups. Axis selections must coexist on one variant.
+const COLOR_SWATCHES = {'Хар':'#242321','Бор':'#886344','Саарал':'#A3A09B','Цагаан':'#F7F4EC'};
+const CATALOG_GROUPS = [
+  {key:'type',label:'Ангилал',values:Object.entries(TYPES).map(([value,t])=>({value,label:t.label})),test:(p,v)=>p.type===v},
+  {key:'model',label:'Загварын нэр',values:CATALOG.map(p=>({value:p.id,label:p.name})),test:(p,v)=>p.id===v},
+  ...['Хэмжээ','Өнгө','Хийцлэл','Загвар'].map((axis,i)=>({key:'axis'+i,axis,label:axis==='Загвар'?'Хээ':axis,
+    values:[...new Set(CATALOG.flatMap(p=>p.variants.map(v=>v.options[axis]).filter(Boolean)))].sort((a,b)=>a.localeCompare(b,'mn',{numeric:true})).map(value=>({value,label:value}))})),
+  {key:'category',label:'Насны ангилал',values:[{value:'main',label:'Үндсэн'},{value:'kids',label:'Хүүхдийн'}],test:(p,v)=>p.category===v},
+  {key:'price',label:'Үнэ',values:[{value:'under100',label:'100,000₮ хүртэл'},{value:'100to250',label:'100,000–250,000₮'},{value:'over250',label:'250,000₮-өөс дээш'}],
+    test:(p,v)=>v==='under100'?p.base_price<=100000:v==='100to250'?p.base_price>100000&&p.base_price<=250000:p.base_price>250000},
+  {key:'collection',label:'Онцлох',values:[{value:'hot',label:'Эрэлттэй'},{value:'fresh',label:'Шинэ'}],test:(p,v)=>Boolean(p[v])},
+  {key:'stock',label:'Бэлэн байдал',values:[{value:'available',label:'Бэлэн байгаа'}],test:p=>p.stock_count>0},
+];
+let catalogFilters={query:'',sort:'default',selected:{}}, filterPanelOpen=false;
+
+function matchingCatalogVariants(p){
+  return p.variants.filter(v=>CATALOG_GROUPS.filter(g=>g.axis).every(g=>{
+    const chosen=catalogFilters.selected[g.key]||[];
+    return !chosen.length||chosen.includes(v.options[g.axis]);
+  }));
+}
+
+function filteredCatalog(){
+  const query=catalogFilters.query.trim().toLocaleLowerCase('mn');
+  const shown=CATALOG.filter(p=>p.name.toLocaleLowerCase('mn').includes(query)&&
+    CATALOG_GROUPS.filter(g=>!g.axis).every(g=>{
+      const chosen=catalogFilters.selected[g.key]||[];
+      return !chosen.length||chosen.some(value=>g.test(p,value));
+    })&&matchingCatalogVariants(p).length>0);
+  if(catalogFilters.sort==='price-asc') shown.sort((a,b)=>a.base_price-b.base_price);
+  if(catalogFilters.sort==='price-desc') shown.sort((a,b)=>b.base_price-a.base_price);
+  if(catalogFilters.sort==='name') shown.sort((a,b)=>a.name.localeCompare(b.name,'mn'));
+  return shown;
+}
+
+function updateCatalogResults(){
+  const shown=filteredCatalog(), chips=[];
+  CATALOG_GROUPS.forEach((g,i)=>g.values.forEach((v,j)=>{
+    const active=(catalogFilters.selected[g.key]||[]).includes(v.value);
+    document.getElementById(`filter-${i}-${j}`).setAttribute('aria-pressed',String(active));
+    if(active) chips.push(`<button class="active-filter" aria-label="${esc(g.label+': '+v.label)} арилгах" onclick="toggleCatalogFilter(${i},${j})">${esc(v.label)} <span aria-hidden="true">×</span></button>`);
+  }));
+  if(catalogFilters.query.trim()) chips.push(`<button class="active-filter" onclick="clearCatalogQuery()" aria-label="Хайлтыг арилгах">Хайлт: ${esc(catalogFilters.query.trim())} <span aria-hidden="true">×</span></button>`);
+  document.getElementById('filter-summary').textContent=`${chips.length?chips.length+' сонголт · ':''}${filterPanelOpen?'Хураах −':'Нээх +'}`;
+  document.getElementById('filter-reset').disabled=!chips.length;
+  document.getElementById('catalog-count').textContent=`${CATALOG.length} загвараас ${shown.length} харагдаж байна`;
+  document.getElementById('filter-apply').textContent=`${shown.length} загвар харах`;
+  const chipBox=document.getElementById('active-filters');
+  const chipHadFocus=chipBox.contains(document.activeElement);
+  chipBox.innerHTML=chips.join('');
+  if(chipHadFocus){
+    const next=chipBox.querySelector('button')||catalogFocusTarget();
+    next.focus({preventScroll:true});
+  }
+  document.getElementById('catalog-results').innerHTML=shown.length?`<div class="grid">${shown.map(p=>{
       const flags = [
         p.hot   ? '<span class="tag hot">Эрэлттэй</span>' : '',
         p.fresh ? '<span class="tag new">Шинэ</span>' : '',
       ].join('');
-      return `<button class="card" onclick="go({name:'model',id:'${p.id}'})">
+      return `<button class="card" onclick="openCatalogModel('${p.id}')">
         <div style="position:relative">
           <img class="ph" src="${p.images[0]}" alt="${p.name}" loading="lazy" onerror="${imgFallback}">
           ${flags ? `<div class="flags">${flags}</div>` : ''}
@@ -620,17 +736,54 @@ function catalogView(){
           <div class="cp">${mnt(p.base_price)}</div>
           <span class="tag ${p.stock_count > 0 ? 'ok' : 'low'}">Бэлэн: ${p.stock_count} ${unitOf(p)}</span>
         </div></button>`;
-    }).join('')}</div>
-    ${cart.length?`<button class="btn" onclick="go({name:'cart'})">Сагс (${cart.reduce((s,l)=>s+l.qty,0)}) — үргэлжлүүлэх</button>`:''}
-  `;
+    }).join('')}</div>`:`<div class="catalog-empty"><strong>Тохирох загвар олдсонгүй</strong>
+      <p>Хэмжээ, өнгө эсвэл бусад сонголтоо өөрчилж үзээрэй.</p><button class="btn" onclick="resetCatalogFilters()">Бүх загварыг харах</button></div>`;
+  reveal();
 }
-const setFilter = f => { filter = f; render(); };
+
+function toggleCatalogFilter(groupIndex,valueIndex){
+  const group=CATALOG_GROUPS[groupIndex], value=group.values[valueIndex].value;
+  const chosen=catalogFilters.selected[group.key]||[];
+  catalogFilters.selected[group.key]=chosen.includes(value)?chosen.filter(v=>v!==value):[...chosen,value];
+  updateCatalogResults();
+}
+function setCatalogQuery(value){catalogFilters.query=value;updateCatalogResults()}
+function clearCatalogQuery(){document.getElementById('catalog-search').value='';setCatalogQuery('')}
+function catalogFocusTarget(){
+  return document.getElementById(!filterPanelOpen&&matchMedia('(max-width:1023px)').matches?'filter-toggle':'catalog-search');
+}
+function resetCatalogFilters(){
+  catalogFilters.selected={};
+  clearCatalogQuery();
+  catalogFocusTarget().focus({preventScroll:true});
+}
+function toggleFilterPanel(){
+  filterPanelOpen=!filterPanelOpen;
+  document.querySelector('.catalog-sidebar').classList.toggle('is-open',filterPanelOpen);
+  document.getElementById('filter-toggle').setAttribute('aria-expanded',String(filterPanelOpen));
+  updateCatalogResults();
+}
+function showCatalogResults(){
+  if(filterPanelOpen) toggleFilterPanel();
+  document.getElementById('filter-toggle').focus({preventScroll:true});
+  document.querySelector('.catalog-main').scrollIntoView({block:'start'});
+}
+function openCatalogModel(id){
+  const p=CATALOG.find(x=>x.id===id), options={};
+  const matches=matchingCatalogVariants(p);
+  CATALOG_GROUPS.filter(g=>g.axis).forEach(g=>{
+    const chosen=catalogFilters.selected[g.key]||[];
+    if(chosen.length===1&&matches.some(v=>v.options[g.axis]===chosen[0])) options[g.axis]=chosen[0];
+  });
+  go({name:'model',id,options});
+  window.scrollTo(0,0);
+}
 
 function modelView(id){
   const p = CATALOG.find(x=>x.id===id);
-  sel = {};
+  sel = {...view.options};
   app.innerHTML = `
-    <button class="back" onclick="go({name:'catalog'})">← Бүх загвар</button>
+    <button class="back" onclick="go({name:'catalog'})">← Загварууд руу буцах</button>
     <div class="pd"><div class="pd-media">
     <div class="gal" id="gal" onscroll="syncDots()">
       ${p.images.map((u,i)=>`<button onclick="openLb('${p.id}',${i})" aria-label="Томоор харах">
@@ -791,7 +944,9 @@ async function copyRequest(){
 }
 
 // ── entrance animation ────────────────────────────────────────────
+let cardObserver=null;
 const reveal = () => {
+  if(cardObserver) cardObserver.disconnect();
   const cards = [...document.querySelectorAll('.card')];
   if (!('IntersectionObserver' in window) ||
       matchMedia('(prefers-reduced-motion: reduce)').matches) {
@@ -808,6 +963,7 @@ const reveal = () => {
       obs.unobserve(e.target);
     });
   }, { rootMargin: '0px 0px -8% 0px', threshold: 0.08 });
+  cardObserver=io;
   cards.forEach(c => io.observe(c));
 };
 
