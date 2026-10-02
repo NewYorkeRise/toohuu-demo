@@ -315,6 +315,17 @@
   .catalog-hero .eyebrow{font-size:12px;font-weight:600;letter-spacing:2.5px;margin-bottom:9px}
   .catalog-hero h1{font-size:40px;line-height:1.15;letter-spacing:-1.4px;font-weight:600}
   .catalog-hero h1:after{content:'';display:block;width:43px;height:3px;background:var(--gold);margin-top:18px}
+  .category-nav{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;margin:0 0 30px}
+  .category-button{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:92px;text-align:left;
+    padding:22px 24px;border:1px solid var(--line);border-radius:12px;background:transparent;color:var(--ink);font:inherit;cursor:pointer}
+  .category-button strong{font-size:25px;font-weight:500}
+  .category-button small{display:block;font-size:12px;margin-top:6px;color:var(--ink-2)}
+  .category-arrow{font-size:22px;color:var(--ink-2)}
+  .category-button[aria-pressed="true"]{border-color:var(--ink);background:var(--ink);color:var(--on-ink)}
+  .category-button[aria-pressed="true"] small,.category-button[aria-pressed="true"] .category-arrow{color:#E5DDD1}
+  .category-button:focus-visible{outline:2px solid var(--signal);outline-offset:3px}
+  .category-content{border-top:1px solid var(--line);padding-top:26px}
+  .category-filter-title{font-size:14px;font-weight:600;padding-bottom:15px;margin-bottom:24px;border-bottom:1px solid var(--line)}
   .color-strip{display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin-bottom:30px;min-height:44px}
   .color-label{font-size:11px;font-weight:600;letter-spacing:3px;color:var(--ink-2);margin-right:4px}
   .color-swatch{width:40px;height:40px;border:1px solid transparent;border-radius:50%;padding:5px;background:none;cursor:pointer;display:grid;place-items:center}
@@ -388,6 +399,12 @@
     header{min-height:68px}
     .catalog-hero h1{font-size:32px}
     .catalog-hero{margin-bottom:22px}
+    .category-nav{gap:8px;margin-bottom:24px}
+    .category-button{padding:15px 8px;min-height:82px;justify-content:center;text-align:center}
+    .category-button strong{font-size:19px}
+    .category-button small{font-size:11px}
+    .category-arrow{display:none}
+    .category-content{padding-top:22px}
     .color-strip{gap:8px;margin-bottom:24px}
     .catalog-toolbar{gap:12px;margin-bottom:20px}
     .catalog-tools{width:100%;gap:12px}
@@ -674,12 +691,18 @@ function render(){
 }
 
 function catalogView(){
-  const colorIndex=CATALOG_GROUPS.findIndex(g=>g.axis==='Өнгө');
+  const groups=catalogGroups(), colorIndex=groups.findIndex(g=>g.axis==='Өнгө');
   app.innerHTML = `
-    <section class="catalog-hero" aria-labelledby="catalog-title"><p class="eyebrow">Дэлгүүр</p><h1 id="catalog-title">Бүх загвар</h1></section>
+    <section class="catalog-hero" aria-labelledby="catalog-title"><p class="eyebrow">TOOHUU</p><h1 id="catalog-title">Дэлгүүр</h1></section>
+    <nav class="category-nav" aria-label="Бүтээгдэхүүний үндсэн бүлгүүд">
+      ${Object.entries(TYPES).map(([type,t])=>`<button class="category-button" id="category-${type}" aria-pressed="${catalogType===type}" aria-controls="catalog-category-content" onclick="switchCatalogType('${type}')">
+        <span><strong>${t.label}</strong><small>${CATALOG.filter(p=>p.type===type).length} загвар</small></span><span class="category-arrow" aria-hidden="true">${catalogType===type?'↓':'→'}</span>
+      </button>`).join('')}
+    </nav>
+    <section class="category-content" id="catalog-category-content" aria-label="${TYPES[catalogType].label}">
     <div class="color-strip" role="group" aria-label="Өнгө">
       <span class="color-label">ӨНГӨ</span>
-      ${CATALOG_GROUPS[colorIndex].values.map((v,j)=>`<button class="color-swatch" id="filter-${colorIndex}-${j}" aria-label="${esc(v.label)}" title="${esc(v.label)}" aria-pressed="false" onclick="toggleCatalogFilter(${colorIndex},${j})" style="--swatch:${COLOR_SWATCHES[v.value]}"><span aria-hidden="true"></span></button>`).join('')}
+      ${groups[colorIndex].values.map((v,j)=>`<button class="color-swatch" id="filter-${colorIndex}-${j}" aria-label="${esc(v.label)}" title="${esc(v.label)}" aria-pressed="false" onclick="toggleCatalogFilter(${colorIndex},${j})" style="--swatch:${COLOR_SWATCHES[v.value]}"><span aria-hidden="true"></span></button>`).join('')}
     </div>
     <div class="catalog-toolbar">
       <p class="catalog-count" id="catalog-count" role="status" aria-live="polite" aria-atomic="true"></p>
@@ -695,12 +718,13 @@ function catalogView(){
       <button class="filter-clear" id="filter-reset" onclick="resetCatalogFilters()">Цэвэрлэх</button>
     </div>
     <div class="catalog-layout">
-      <aside class="catalog-sidebar ${filterPanelOpen?'is-open':''}" aria-label="Каталогийн шүүлтүүр">
+      <aside class="catalog-sidebar ${filterPanelOpen?'is-open':''}" aria-label="${CATEGORY_DETAILS[catalogType].filterLabel}">
         <button class="filter-toggle" id="filter-toggle" aria-expanded="${filterPanelOpen}" aria-controls="filter-body" onclick="toggleFilterPanel()">
           <span>Шүүлтүүр</span><span id="filter-summary"></span>
         </button>
         <div class="filter-body" id="filter-body">
-          ${CATALOG_GROUPS.map((g,i)=>g.axis==='Өнгө'?'':`<fieldset class="filter-group"><legend>${g.label}</legend>
+          <h3 class="category-filter-title">${CATEGORY_DETAILS[catalogType].filterLabel}</h3>
+          ${groups.map((g,i)=>g.axis==='Өнгө'?'':`<fieldset class="filter-group"><legend>${g.label}</legend>
             <div class="filter-options ${g.key==='model'?'models':''}">${g.values.map((v,j)=>`
               <button class="filter-choice" id="filter-${i}-${j}" aria-pressed="false" onclick="toggleCatalogFilter(${i},${j})">
                 ${esc(v.label)}
@@ -712,28 +736,65 @@ function catalogView(){
         <div id="catalog-results"></div>
         ${cart.length?`<button class="btn" onclick="go({name:'cart'})">Сагс (${cart.reduce((s,l)=>s+l.qty,0)}) — үргэлжлүүлэх</button>`:''}
       </section>
-    </div>`;
+    </div></section>`;
   document.getElementById('catalog-sort').value=catalogFilters.sort;
   updateCatalogResults();
 }
 
 // OR within a group, AND between groups. Axis selections must coexist on one variant.
-const COLOR_SWATCHES = {'Хар':'#242321','Бор':'#886344','Саарал':'#A3A09B','Цагаан':'#F7F4EC'};
-const CATALOG_GROUPS = [
-  {key:'type',label:'Ангилал',values:Object.entries(TYPES).map(([value,t])=>({value,label:t.label})),test:(p,v)=>p.type===v},
-  {key:'model',label:'Загварын нэр',values:CATALOG.map(p=>({value:p.id,label:p.name})),test:(p,v)=>p.id===v},
-  ...['Хэмжээ','Өнгө','Хийцлэл','Загвар'].map((axis,i)=>({key:'axis'+i,axis,label:axis==='Загвар'?'Хээ':axis,
-    values:[...new Set(CATALOG.flatMap(p=>p.variants.map(v=>v.options[axis]).filter(Boolean)))].sort((a,b)=>a.localeCompare(b,'mn',{numeric:true})).map(value=>({value,label:value}))})),
-  {key:'category',label:'Насны ангилал',values:[{value:'main',label:'Үндсэн'},{value:'kids',label:'Хүүхдийн'}],test:(p,v)=>p.category===v},
-  {key:'price',label:'Үнэ',values:[{value:'under100',label:'100,000₮ хүртэл'},{value:'100to250',label:'100,000–250,000₮'},{value:'over250',label:'250,000₮-өөс дээш'}],
-    test:(p,v)=>v==='under100'?p.base_price<=100000:v==='100to250'?p.base_price>100000&&p.base_price<=250000:p.base_price>250000},
-  {key:'collection',label:'Онцлох',values:[{value:'hot',label:'Эрэлттэй'},{value:'fresh',label:'Шинэ'}],test:(p,v)=>Boolean(p[v])},
-  {key:'stock',label:'Бэлэн байдал',values:[{value:'available',label:'Бэлэн байгаа'}],test:p=>p.stock_count>0},
-];
-let catalogFilters={query:'',sort:'default',selected:{}}, filterPanelOpen=false;
+// Display palette matches the reference shop. Adding swatches does not create stock or variants.
+const COLOR_SWATCHES = {
+  'Номин ногоон':'#A8D8C4','Ягаан':'#F4A7B9','Шар':'#FFD166','Шаргал':'#D4C5A9','Цэнхэр':'#5B9BD5',
+  'Хар':'#1C1C1C','Цайвар цэнхэр':'#C8DFF7','Хүрэн улаан':'#7A2033','Улбар шар':'#F28C38','Хар хөх':'#1E3A5F',
+  'Улаан':'#D93B3B','Цайвар нил ягаан':'#C5A8D8','Нил ягаан':'#6B2FA0','Цайвар ягаан':'#FAD4DC','Ногоон':'#4A7A5A',
+  'Неон ногоон':'#C8F000','Бараан саарал':'#555555','Саарал':'#9E9E9E','Бор':'#8B5E3C','Цагаан':'#F5F5F5'
+};
+const CATEGORY_DETAILS = {
+  boot:{filterLabel:'Гутлын сонголт',sizeLabel:'Размер',priceBreaks:[250000,300000]},
+  socks:{filterLabel:'Оймсны сонголт',sizeLabel:'Хэмжээ',priceBreaks:[20000,30000]},
+  rug:{filterLabel:'Ширдгийн сонголт',sizeLabel:'Хэмжээ (см)',priceBreaks:[200000,300000]},
+};
+const categoryFilterStates=Object.fromEntries(Object.keys(TYPES).map(type=>[type,{query:'',sort:'default',selected:{}}]));
+let catalogType='boot', catalogFilters=categoryFilterStates.boot, filterPanelOpen=false;
+
+function categoryProducts(type=catalogType){return CATALOG.filter(p=>p.type===type)}
+function sortCatalogOptions(values,type,axis){
+  const sizeOrder=['XS','S','M','L'];
+  return values.sort((a,b)=>{
+    const sizeRank=type==='socks'&&axis==='Хэмжээ'?sizeOrder.indexOf(a.split(' ')[0])-sizeOrder.indexOf(b.split(' ')[0]):0;
+    return sizeRank||a.localeCompare(b,'mn',{numeric:true});
+  });
+}
+function catalogGroups(type=catalogType){
+  const products=categoryProducts(type), details=CATEGORY_DETAILS[type], [low,high]=details.priceBreaks;
+  const groups=[
+    {key:'model',label:'Загварын нэр',values:products.map(p=>({value:p.id,label:p.name})),test:(p,v)=>p.id===v},
+    {key:'color',axis:'Өнгө',label:'Өнгө',values:Object.keys(COLOR_SWATCHES).map(value=>({value,label:value}))},
+    ...['Хэмжээ','Хийцлэл','Загвар'].map(axis=>({key:'axis:'+axis,axis,label:axis==='Загвар'?'Хээ':axis==='Хэмжээ'?details.sizeLabel:axis,
+      values:sortCatalogOptions([...new Set(products.flatMap(p=>p.variants.map(v=>v.options[axis]).filter(Boolean)))],type,axis).map(value=>({value,label:value}))})).filter(g=>g.values.length),
+  ];
+  if(type!=='rug'&&new Set(products.map(p=>p.category)).size>1) groups.push({key:'category',label:'Насны ангилал',
+    values:[{value:'main',label:'Том хүний'},{value:'kids',label:'Хүүхдийн'}],test:(p,v)=>p.category===v});
+  groups.push(
+    {key:'price',label:'Үнэ',values:[{value:'low',label:mnt(low)+' хүртэл'},{value:'mid',label:mnt(low)+'–'+mnt(high)},{value:'high',label:mnt(high)+'-өөс дээш'}],
+      test:(p,v)=>v==='low'?p.base_price<=low:v==='mid'?p.base_price>low&&p.base_price<=high:p.base_price>high},
+    {key:'collection',label:'Онцлох',values:[{value:'hot',label:'Эрэлттэй'},{value:'fresh',label:'Шинэ'}].filter(v=>products.some(p=>p[v.value])),test:(p,v)=>Boolean(p[v])},
+    {key:'stock',label:'Бэлэн байдал',values:[{value:'available',label:'Бэлэн байгаа'}],test:p=>p.stock_count>0}
+  );
+  return groups;
+}
+
+function switchCatalogType(type){
+  if(!TYPES[type]) return;
+  catalogType=type;
+  catalogFilters=categoryFilterStates[type];
+  render();
+  document.getElementById('category-'+type).focus({preventScroll:true});
+}
 
 function matchingCatalogVariants(p){
-  return p.variants.filter(v=>CATALOG_GROUPS.filter(g=>g.axis).every(g=>{
+  const axes=catalogGroups(p.type).filter(g=>g.axis);
+  return p.variants.filter(v=>axes.every(g=>{
     const chosen=catalogFilters.selected[g.key]||[];
     return !chosen.length||chosen.includes(v.options[g.axis]);
   }));
@@ -741,8 +802,9 @@ function matchingCatalogVariants(p){
 
 function filteredCatalog(){
   const query=catalogFilters.query.trim().toLocaleLowerCase('mn');
-  const shown=CATALOG.filter(p=>p.name.toLocaleLowerCase('mn').includes(query)&&
-    CATALOG_GROUPS.filter(g=>!g.axis).every(g=>{
+  const groups=catalogGroups().filter(g=>!g.axis);
+  const shown=categoryProducts().filter(p=>p.name.toLocaleLowerCase('mn').includes(query)&&
+    groups.every(g=>{
       const chosen=catalogFilters.selected[g.key]||[];
       return !chosen.length||chosen.some(value=>g.test(p,value));
     })&&matchingCatalogVariants(p).length>0);
@@ -754,7 +816,7 @@ function filteredCatalog(){
 
 function updateCatalogResults(){
   const shown=filteredCatalog(), chips=[];
-  CATALOG_GROUPS.forEach((g,i)=>g.values.forEach((v,j)=>{
+  catalogGroups().forEach((g,i)=>g.values.forEach((v,j)=>{
     const active=(catalogFilters.selected[g.key]||[]).includes(v.value);
     document.getElementById(`filter-${i}-${j}`).setAttribute('aria-pressed',String(active));
     if(active) chips.push(`<button class="active-filter" aria-label="${esc(g.label+': '+v.label)} арилгах" onclick="toggleCatalogFilter(${i},${j})">${esc(v.label)} <span aria-hidden="true">×</span></button>`);
@@ -772,9 +834,9 @@ function updateCatalogResults(){
     const next=chipBox.querySelector('button')||catalogFocusTarget();
     next.focus({preventScroll:true});
   }
-  const sections=catalogFilters.sort==='default'
-    ? Object.keys(TYPES).map(type=>({label:type==='boot'?'TOOHUU · Эсгий урлал':TYPES[type].label,products:shown.filter(p=>p.type===type)})).filter(s=>s.products.length)
-    : [{label:'Бүх загвар',products:shown}];
+  const sections=[{label:TYPES[catalogType].label,products:shown}];
+  const colors=catalogFilters.selected.color||[];
+  const noColorMatch=colors.length&&!categoryProducts().some(p=>p.variants.some(v=>colors.includes(v.options['Өнгө'])));
   document.getElementById('catalog-results').innerHTML=shown.length?sections.map((section,index)=>`
     <section class="collection-section" aria-label="${esc(section.label)}">
       <div class="collection-heading"><div><h2>${section.label}</h2>${index===0?`<p class="catalog-note">${CATALOG_NOTE}</p>`:''}</div><span>${section.products.length} загвар</span></div>
@@ -792,13 +854,13 @@ function updateCatalogResults(){
           <div class="cp">${mnt(p.base_price)}</div></div>
           <div class="card-stock">Бэлэн: ${p.stock_count} ${unitOf(p)}</div>
         </div></button>`;
-    }).join('')}</div></section>`).join(''):`<div class="catalog-empty"><strong>Тохирох загвар олдсонгүй</strong>
-      <p>Хэмжээ, өнгө эсвэл бусад сонголтоо өөрчилж үзээрэй.</p><button class="btn" onclick="resetCatalogFilters()">Бүх загварыг харах</button></div>`;
+    }).join('')}</div></section>`).join(''):`<div class="catalog-empty"><strong>${noColorMatch?'Энэ өнгөөр бүртгэлтэй загвар одоогоор алга':'Тохирох загвар олдсонгүй'}</strong>
+      <p>${noColorMatch?colors.map(esc).join(', ')+' · '+TYPES[catalogType].label+'. Өөр өнгө сонгож үзээрэй.':'Хэмжээ, өнгө эсвэл бусад сонголтоо өөрчилж үзээрэй.'}</p><button class="btn" onclick="resetCatalogFilters()">Энэ бүлгийн бүх загварыг харах</button></div>`;
   reveal();
 }
 
 function toggleCatalogFilter(groupIndex,valueIndex){
-  const group=CATALOG_GROUPS[groupIndex], value=group.values[valueIndex].value;
+  const group=catalogGroups()[groupIndex], value=group.values[valueIndex].value;
   const chosen=catalogFilters.selected[group.key]||[];
   catalogFilters.selected[group.key]=chosen.includes(value)?chosen.filter(v=>v!==value):[...chosen,value];
   updateCatalogResults();
@@ -827,7 +889,7 @@ function showCatalogResults(){
 function openCatalogModel(id){
   const p=CATALOG.find(x=>x.id===id), options={};
   const matches=matchingCatalogVariants(p);
-  CATALOG_GROUPS.filter(g=>g.axis).forEach(g=>{
+  catalogGroups(p.type).filter(g=>g.axis).forEach(g=>{
     const chosen=catalogFilters.selected[g.key]||[];
     if(chosen.length===1&&matches.some(v=>v.options[g.axis]===chosen[0])) options[g.axis]=chosen[0];
   });
