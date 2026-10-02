@@ -517,6 +517,7 @@ function catalogProduct(product){
      !Array.isArray(product.variants)) throw new Error('Invalid catalog');
   const images=[...new Set([product.image,...(product.images||[])].filter(source=>{
     if(typeof source!=='string'||!source) return false;
+    if(/^\/media\/[a-f0-9]{64}$/.test(source))return true;
     try{return new URL(source).protocol==='https:'}catch{return false}
   }))];
   return {...product,description:product.description||'',option_axes:product.axes,
