@@ -1,0 +1,12 @@
+{
+  "name": "toohuu-demo",
+  "pages_build_output_dir": "./dist",
+  "compatibility_date": "2026-10-01",
+  "d1_databases": [{
+    "binding": "CATALOG_DB",
+    "database_name": "toohuu-catalog",
+    "database_id": "244ca72f-4648-49db-ac3b-9fd4a0df94d7",
+    "migrations_dir": "migrations"
+  }],
+  "env": {"preview": {"d1_databases": []}}
+}

@@ -6,7 +6,12 @@
 const REALM = 'TOOHUU admin';
 
 function isAdminPath(pathname) {
-  const p = pathname.toLowerCase();
+  let p;
+  try {
+    p=pathname;
+    for(let i=0;i<3;i++){const decoded=decodeURIComponent(p);if(decoded===p)break;p=decoded;}
+    p=new URL('https://admin.invalid'+p.replace(/\\/g,'/').replace(/\/{2,}/g,'/')).pathname.toLowerCase();
+  } catch { return true; }
   return p === '/admin' || p.startsWith('/admin.') || p.startsWith('/admin/');
 }
 
@@ -44,7 +49,7 @@ const challenge = () => new Response('Нэвтрэх шаардлагатай.',
   },
 });
 
-export async function onRequest({ request, env, next }) {
+export async function onRequest({ request, env, next, data }) {
   const url = new URL(request.url);
   if (!isAdminPath(url.pathname)) return next();
 
@@ -64,9 +69,18 @@ export async function onRequest({ request, env, next }) {
   ]);
   if (!(userOk && passOk)) return challenge();
 
+  data.adminUser = cred.user;
+  if (!['GET', 'HEAD'].includes(request.method) && request.headers.get('Origin') !== url.origin) {
+    return Response.json({error:'Хүсэлт зөвшөөрөгдөөгүй.'}, {status:403,headers:{'Cache-Control':'no-store'}});
+  }
+
   const res = await next();
   const out = new Response(res.body, res);
   out.headers.set('Cache-Control', 'no-store');           // never cache the admin in shared caches
   out.headers.set('X-Robots-Tag', 'noindex, nofollow');
+  out.headers.set('X-Content-Type-Options', 'nosniff');
+  out.headers.set('X-Frame-Options', 'DENY');
+  out.headers.set('Referrer-Policy', 'same-origin');
+  out.headers.set('Content-Security-Policy', "default-src 'self'; script-src 'self'; style-src 'self' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' https: data:; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'");
   return out;
 }

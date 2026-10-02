@@ -481,7 +481,6 @@ const PLACEHOLDER = 'data:image/svg+xml;utf8,' + encodeURIComponent(
   "text-anchor='middle' dominant-baseline='middle' letter-spacing='1'>зураг удахгүй</text>"+
   "</svg>");
 const imgFallback = "this.onerror=null;this.src=PLACEHOLDER";
-const IMG = id => `https://drive.google.com/thumbnail?id=${id}&sz=w1000`;
 
 // ── branches ──────────────────────────────────────────────────────
 const BRANCHES = [
@@ -489,99 +488,18 @@ const BRANCHES = [
   { id:'b2', name:'Дэлгүүр', address:'Урт цагаан үйлчилгээний төвийн 3 давхар, 304 тоот' },
 ];
 
-// ── catalog: 10 models from the Drive folders (Design 001–010) ─────
-// Photos and boot names are confirmed. The owner requested provisional prices
-// and sample stock counts; RAW is the single editable source for displayed values.
-// Option combinations are still demo data.
-// Each product type has its own options and its own unit.
-// Socks and rug option values are PLACEHOLDER until TOOHUU confirms the real ones.
+// Catalog edits are shared with the protected admin dashboard through the API.
 const TYPES = {
-  boot:  { label:'Гутал', unit:'хос', axes:[
-           { name:'Хийцлэл', values:['Оёмол','Давхар эсгий','Арьсан хормойтой'] },
-           { name:'Өнгө',    values:['Хар','Бор','Саарал'] },
-           { name:'Хэмжээ',  values:['36','37','38','39','40','41','42','43'], kids:['26','27','28','29','30','31','32','33'] } ],
-           delta: o => (o['Хийцлэл']==='Давхар эсгий'?25000:o['Хийцлэл']==='Арьсан хормойтой'?40000:0) + (+o['Хэмжээ']>=42?10000:0),
-           desc:'Монгол эсгий. Үйлдвэрийн шууд бүтээгдэхүүн. Салбараас авах эсвэл хүргэлтээр.' },
-  socks: { label:'Оймс', unit:'хос', axes:[
-           { name:'Өнгө',    values:['Цагаан','Саарал','Бор'] },
-           { name:'Хэмжээ',  values:['S (35–37)','M (38–40)','L (41–43)'], kids:['XS (26–29)','S (30–33)'] } ],
-           delta: o => /^L/.test(o['Хэмжээ']) ? 3000 : 0,
-           desc:'Дулаан эсгий нэмэлт. Өнгө, хэмжээгээ сонгоно уу.' },
-  rug:   { label:'Ширдэг', unit:'ширхэг', axes:[
-           { name:'Хэмжээ',  values:['60×90 см','90×150 см','120×180 см','200×300 см'] },
-           { name:'Загвар',  values:['Өлзий','Эвэр','Хас'] } ],
-           delta: o => ({'90×150 см':140000,'120×180 см':290000,'200×300 см':690000})[o['Хэмжээ']] || 0,
-           desc:'Гар аргаар сийрсэн эсгий эдлэл. Хэмжээгээ сонгоно уу.' },
+  boot:{label:'Гутал',unit:'хос'},
+  socks:{label:'Оймс',unit:'хос'},
+  rug:{label:'Ширдэг',unit:'ширхэг'},
 };
 const unitOf = p => (TYPES[p.type] || TYPES.boot).unit;
-// Owner-supplied names follow the existing design order. The final five names
-// are reserved for future boot designs, when their photos are available.
-const BOOT_NAMES = [
-  'Хуцандай', 'Хургандай', 'Алагдай', 'Цоохондой', 'Хэнцхэн',
-  'Борголхон', 'Халзайдай', 'Халиундай', 'Бөдөнхөн', 'Сэгсээхэй',
-  'Бондоолой', 'Үйлэндэй', 'Хуруундай', 'Сөөмхөн', 'Өөлхийдэй'
-];
 const CATALOG_NOTE = 'Үнэ, бэлэн тоо нь түр жишиг мэдээлэл.';
-// The owner requested a provisional audience split; edit this map when confirmed.
 const BOOT_AUDIENCES = {men:'Эрэгтэй',women:'Эмэгтэй',kids:'Хүүхэд'};
-const BOOT_AUDIENCE_BY_MODEL = {1:'men',2:'kids',3:'women',4:'women',5:'kids',6:'men',7:'women',8:'men',9:'women',10:'men'};
 const catalogNote = type => type==='boot'?'Ангилал, үнэ, бэлэн тоо нь түр жишиг мэдээлэл.':CATALOG_NOTE;
 const mnt = n => n.toLocaleString('en-US') + '₮';
-// One entry per Drive folder (Design 001–010). Grouping comes from the folders, not a guess.
-const RAW = [
-  { n:1, price:210000, stock:6, cat:'main', hot:true, fresh:false, imgs:['1XInpyWSy14fpSQ0G6MQLm-vxJ9H-_Rgf','1K8rGKyCmZTZ4Fdo-H9NhhUb9ijftSJS1','1Aemf9vfdwuROzIzLmXrBy5cEldQ6ZkMJ'] },   // Design 001 — 1.png, 2.png, 3.png
-  { n:2, price:210000, stock:4, cat:'main', hot:false, fresh:true, imgs:['1h7SgX_LX1ZUhbEcsFTuxKbUoLsnpMpnL','1niEKamCGc5KRnhSeTxgW_9QcufDP9Spc','186p6ON3SQF_qrunPfKeqnTWDXBnRRd8c'] },   // Design 002 — 6.png, 7.png, 8.png
-  { n:3, price:230000, stock:5, cat:'main', hot:false, fresh:false, imgs:['10FZDMsmjmGtlnvciWCu-RAGBDDAflYqK','1-PQfHnFttD0JN_K4ri82qn_yqEoRtxQs','1F33EPpVO2-YVNRKHwOhPtnzUnzn37xNu'] },   // Design 003 — 9.png, 10.png, 11.png
-  { n:4, price:250000, stock:3, cat:'main', hot:true, fresh:false, imgs:['1NCU-DI6Ory-B5Sp2SFmBBhRK29ZKMTiK','1jgsDPVZNgQFX_TfUoRiltvGUWyLn39s0','1BOvcys6aLm8_zU7eAT7CweRkYoIWYpkb'] },   // Design 004 — 12.png, 13.png, 14.png
-  { n:5, price:230000, stock:4, cat:'main', hot:false, fresh:false, imgs:['1Zy0DQNP-iwI_0NAtJYrRD2av2VlE6o_D','1Ldi3uuKKQCFCR5h4ErLQUiok9JiLPC3x'] },   // Design 005 — 15.png, 16.png
-  { n:6, price:250000, stock:5, cat:'main', hot:false, fresh:false, imgs:['1DbDdpnWTJHCjZOdujLtT0oGKlaXnTSPT','1r37JfK_pcKO967yVRLRSZREXNkOska7T'] },   // Design 006 — 17.png, 18.png
-  { n:7, price:270000, stock:3, cat:'main', hot:true, fresh:false, imgs:['1LY0fM1jTQvNLTjvhHaooh8CEMCz35Pp5','1snjdhqZnni2q0Fgc8In6DKV-KWKQda4u'] },   // Design 007 — 19.png, 20.png
-  { n:8, price:270000, stock:4, cat:'main', hot:false, fresh:false, imgs:['1L8daKWwJU_yJbTccsUu5nk1LWHYxpnnn','1Xmuj_FtidWGs7y3UENG4oil0zp9LSpOS'] },   // Design 008 — 21.png, 22.png
-  { n:9, price:320000, stock:2, cat:'main', hot:false, fresh:true, imgs:['1jZlhurFrT06tZPeb93k4DGsGg2Mt1VyK','1HFT_8ruy2nRmjGhic0jUE6xEWiBAdxDb'] },   // Design 009 — 31.png, 32.png
-  { n:10, price:380000, stock:2, cat:'main', hot:false, fresh:false, imgs:['1YUPllVUGt2oTQ3Mj_4VrvnuMeEDA1T7i','1f-g_OW6iQDVsS9D7GyNQMbD2X9F6Fzwx'] },   // Design 010 — 33.png, 34.png
-  // PLACEHOLDER products until real socks / rug photos and prices are supplied
-  { n:11, type:'socks', price:25000, stock:18,  cat:'main', hot:false, fresh:true,  imgs:[] },
-  { n:12, type:'socks', price:19000, stock:12,  cat:'kids', hot:false, fresh:false, imgs:[] },
-  { n:13, type:'rug',   price:180000, stock:3, cat:'main', hot:true,  fresh:false, imgs:[] },
-  { n:14, type:'rug',   price:210000, stock:2, cat:'main', hot:false, fresh:true,  imgs:[] },
-];
-
-// Deterministic pseudo-random so the demo is stable across reloads.
-let seed = 7;
-const rnd = n => { seed = (seed * 1103515245 + 12345) & 0x7fffffff; return seed % n; };
-
-const CATALOG = [], INV = {};
-for (const r of RAW) {
-  const type = r.type || 'boot', T = TYPES[type];
-  const audience=type==='boot'?BOOT_AUDIENCE_BY_MODEL[r.n]:null;
-  const category=audience==='kids'?'kids':r.cat;
-  // Kids' sizes differ (a kids' boot does not come in size 43).
-  const axes = T.axes.map(a => ({ name:a.name, values:[...(category === 'kids' && a.kids ? a.kids : a.values)] }));
-  let combos = [{}];
-  for (const a of axes) combos = combos.flatMap(c => a.values.map(v => ({ ...c, [a.name]: v })));
-  const variants = [];
-  combos.forEach((options, k) => {
-    if (rnd(10) < 3) return;                         // the workshop doesn't make every combination
-    const id = `m${r.n}-${k}`;
-    const pre = rnd(10) < 2;                         // some items are made to order
-    variants.push({ id, sku:`TH-${r.n}-${k}`, options, price_delta:T.delta(options), is_preorder:pre });
-    INV[id] = {};
-    if (!pre) {
-      const a = rnd(4), b = rnd(3);
-      if (a) INV[id].b1 = a;
-      if (b) INV[id].b2 = b;
-    }
-  });
-  CATALOG.push({
-    id:`m${r.n}`, sku:`TH-${String(r.n).padStart(3,'0')}`,
-    name: type==='boot' ? BOOT_NAMES[r.n - 1]
-          : BOOT_NAMES[r.n - 1],
-    description:T.desc, type,
-    base_price:r.price, stock_count:r.stock, is_active:true, option_axes:axes, variants,
-    images: r.imgs.length ? r.imgs.map(IMG) : [PLACEHOLDER],
-    category, audience, hot:r.hot, fresh:r.fresh,
-  });
-}
+let CATALOG = [], catalogStatus='loading';
 
 // Confirmed business information. Catalog amounts remain provisional;
 // the workshop confirms each order before accepting a deposit.
@@ -591,6 +509,39 @@ const BUSINESS = {
   rural:'Хөдөө орон нутгийн унаанд тавьж өгнө. Чиглэл, унааны мэдээллийг чатаар тохиролцоно.'
 };
 const esc = value => String(value).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const jsArg = value => esc(JSON.stringify(value));
+function catalogProduct(product){
+  if(!product || !Object.hasOwn(TYPES,product.type) || typeof product.id!=='string' ||
+     typeof product.name!=='string' || !Number.isFinite(product.base_price) ||
+     !Number.isInteger(product.stock_count) || !Array.isArray(product.axes) ||
+     !Array.isArray(product.variants)) throw new Error('Invalid catalog');
+  const images=[...new Set([product.image,...(product.images||[])].filter(source=>{
+    if(typeof source!=='string'||!source) return false;
+    try{return new URL(source).protocol==='https:'}catch{return false}
+  }))];
+  return {...product,description:product.description||'',option_axes:product.axes,
+    audience:Object.hasOwn(BOOT_AUDIENCES,product.audience)?product.audience:null,
+    images:images.length?images:[PLACEHOLDER]};
+}
+async function loadCatalog(){
+  catalogStatus='loading';
+  render();
+  const controller=new AbortController(), timeout=setTimeout(()=>controller.abort(),15000);
+  try{
+    const response=await fetch('/api/catalog',{cache:'no-store',credentials:'same-origin',signal:controller.signal});
+    if(!response.ok) throw new Error('Catalog unavailable');
+    const data=await response.json();
+    if(!Array.isArray(data.products)) throw new Error('Invalid catalog');
+    CATALOG=data.products.filter(p=>p.is_active!==false).map(catalogProduct);
+    catalogStatus='ready';
+  }catch{
+    CATALOG=[];
+    catalogStatus='error';
+  }finally{
+    clearTimeout(timeout);
+    render();
+  }
+}
 const phone = raw => {
   const d=String(raw).replace(/\D/g,'').replace(/^976/,'');
   if(!/^[5-9]\d{7}$/.test(d)) throw new Error('Утасны дугаар буруу байна. 8 оронтой, 5–9-өөр эхэлсэн байх ёстой.');
@@ -708,6 +659,12 @@ function render(){
   const v=view;
   renderNav();
   app.classList.toggle('narrow', !['catalog','model'].includes(v.name));
+  if(catalogStatus!=='ready'&&!['orders','contact'].includes(v.name)){
+    app.innerHTML=catalogStatus==='loading'
+      ? '<section class="catalog-empty" role="status"><strong>Загваруудыг ачаалж байна…</strong></section>'
+      : '<section class="catalog-empty" role="alert"><strong>Загваруудыг ачаалж чадсангүй</strong><p>Интернэт холболтоо шалгаад дахин оролдоно уу.</p><button class="btn" onclick="loadCatalog()">Дахин оролдох</button></section>';
+    return;
+  }
   if(v.name==='catalog'){ catalogView(); return; }
   if(v.name==='orders')  return ordersView();
   if(v.name==='contact') return contactView();
@@ -751,7 +708,7 @@ function catalogView(){
         </button>
         <div class="filter-body" id="filter-body">
           <h3 class="category-filter-title">${CATEGORY_DETAILS[catalogType].filterLabel}</h3>
-          ${groups.map((g,i)=>g.axis==='Өнгө'?'':`<fieldset class="filter-group"><legend>${g.label}</legend>
+          ${groups.map((g,i)=>g.axis==='Өнгө'?'':`<fieldset class="filter-group"><legend>${esc(g.label)}</legend>
             <div class="filter-options ${g.key==='model'?'models':''}">${g.values.map((v,j)=>`
               <button class="filter-choice" id="filter-${i}-${j}" aria-pressed="false" onclick="toggleCatalogFilter(${i},${j})">
                 ${esc(v.label)}
@@ -869,23 +826,23 @@ function updateCatalogResults(){
   const noColorMatch=colors.length&&!categoryProducts().some(p=>p.variants.some(v=>colors.includes(v.options['Өнгө'])));
   document.getElementById('catalog-results').innerHTML=shown.length?sections.map((section,index)=>`
     <section class="collection-section" aria-label="${esc(section.label)}">
-      <div class="collection-heading"><div><h2>${section.label}</h2>${index===0?`<p class="catalog-note">${catalogNote(catalogType)}</p>`:''}</div><span>${section.products.length} загвар</span></div>
+      <div class="collection-heading"><div><h2>${esc(section.label)}</h2>${index===0?`<p class="catalog-note">${catalogNote(catalogType)}</p>`:''}</div><span>${section.products.length} загвар</span></div>
       <div class="grid">${section.products.map(p=>{
       const flags = [
         p.hot   ? '<span class="tag hot">Эрэлттэй</span>' : '',
         p.fresh ? '<span class="tag new">Шинэ</span>' : '',
       ].join('');
-      return `<button class="card" onclick="openCatalogModel('${p.id}')">
+      return `<button class="card" onclick="openCatalogModel(${jsArg(p.id)})">
         <div class="card-media">
-          <img class="ph" src="${p.images[0]}" alt="" loading="lazy" onerror="${imgFallback}">
+          <img class="ph" src="${esc(p.images[0])}" alt="" loading="lazy" onerror="${imgFallback}">
           ${flags ? `<div class="flags">${flags}</div>` : ''}
         </div>
-        <div class="cb"><div class="card-title-row"><div class="cn">${p.name}</div>
+        <div class="cb"><div class="card-title-row"><div class="cn">${esc(p.name)}</div>
           <div class="cp">${mnt(p.base_price)}</div></div>
           <div class="card-stock">${p.audience?BOOT_AUDIENCES[p.audience]+' · ':''}Бэлэн: ${p.stock_count} ${unitOf(p)}</div>
         </div></button>`;
-    }).join('')}</div></section>`).join(''):`<div class="catalog-empty"><strong>${noColorMatch?'Энэ өнгөөр бүртгэлтэй загвар одоогоор алга':'Тохирох загвар олдсонгүй'}</strong>
-      <p>${noColorMatch?colors.map(esc).join(', ')+' · '+TYPES[catalogType].label+'. Өөр өнгө сонгож үзээрэй.':'Хэмжээ, өнгө эсвэл бусад сонголтоо өөрчилж үзээрэй.'}</p><button class="btn" onclick="resetCatalogFilters()">Энэ бүлгийн бүх загварыг харах</button></div>`;
+    }).join('')}</div></section>`).join(''):`<div class="catalog-empty"><strong>${!categoryProducts().length?'Энэ бүлэгт загвар хараахан нэмээгүй байна':noColorMatch?'Энэ өнгөөр бүртгэлтэй загвар одоогоор алга':'Тохирох загвар олдсонгүй'}</strong>
+      ${categoryProducts().length?`<p>${noColorMatch?colors.map(esc).join(', ')+' · '+TYPES[catalogType].label+'. Өөр өнгө сонгож үзээрэй.':'Хэмжээ, өнгө эсвэл бусад сонголтоо өөрчилж үзээрэй.'}</p><button class="btn" onclick="resetCatalogFilters()">Энэ бүлгийн бүх загварыг харах</button>`:''}</div>`;
   reveal();
 }
 
@@ -930,6 +887,7 @@ function showCatalogResults(){
 }
 function openCatalogModel(id){
   const p=CATALOG.find(x=>x.id===id), options={};
+  if(!p) return;
   const matches=matchingCatalogVariants(p);
   catalogGroups(p.type).filter(g=>g.axis).forEach(g=>{
     const chosen=catalogFilters.selected[g.key]||[];
@@ -941,30 +899,31 @@ function openCatalogModel(id){
 
 function modelView(id){
   const p = CATALOG.find(x=>x.id===id);
+  if(!p){go({name:'catalog'});return;}
   sel = {...view.options};
   app.innerHTML = `
     <button class="back" onclick="go({name:'catalog'})">← Загварууд руу буцах</button>
     <div class="pd"><div class="pd-media">
     <div class="gal" id="gal" onscroll="syncDots()">
-      ${p.images.map((u,i)=>`<button onclick="openLb('${p.id}',${i})" aria-label="Томоор харах">
-        <img src="${u}" alt="${p.name}" onerror="${imgFallback}"></button>`).join('')}
+      ${p.images.map((u,i)=>`<button onclick="openLb(${jsArg(p.id)},${i})" aria-label="Томоор харах">
+        <img src="${esc(u)}" alt="${esc(p.name)}" onerror="${imgFallback}"></button>`).join('')}
     </div>
     <div class="dots" id="dots">${p.images.map((_,i)=>`<i class="${i?'':'on'}"></i>`).join('')}</div>
     <div class="zoomhint">Зураг дээр дарж томоор харна уу</div>
     </div><div class="pd-info">
-    <h2>${p.name}</h2>
-    <p class="desc">${p.audience?BOOT_AUDIENCES[p.audience]+' · ':''}${p.description}</p>
+    <h2>${esc(p.name)}</h2>
+    <p class="desc">${p.audience?BOOT_AUDIENCES[p.audience]+' · ':''}${esc(p.description)}</p>
     <div class="big" id="pz">${mnt(p.base_price)}</div>
     <div class="stockline ${p.stock_count > 0 ? 'ok' : 'no'}">Нийт бэлэн: ${p.stock_count} ${unitOf(p)}</div>
     <p class="desc">${catalogNote(p.type)} Үнэ өнгө, хийц, размераас хамааран өөрчлөгдөж болно.</p>
-    ${p.option_axes.map(a=>`
-      <div class="axis">${a.name}</div>
-      <div class="opts" data-axis="${a.name}">
+    ${p.option_axes.map((a,axisIndex)=>`
+      <div class="axis">${esc(a.name)}</div>
+      <div class="opts" id="options-${axisIndex}">
         ${a.values.map(val=>`<button class="opt" aria-pressed="false"
-           onclick="pickOpt('${p.id}','${a.name}',this)">${val}</button>`).join('')}
+           onclick="pickOpt(${jsArg(p.id)},${axisIndex},this)">${esc(val)}</button>`).join('')}
       </div>`).join('')}
     <div id="stock"></div>
-    <button class="btn" id="add" onclick="addToCart('${p.id}')">Сагсанд нэмэх</button>
+    <button class="btn" id="add" onclick="addToCart(${jsArg(p.id)})">Сагсанд нэмэх</button>
     <a class="btn ghost" href="${BUSINESS.messenger}" target="_blank" rel="noopener">Захиалах</a>
     <div class="err" id="perr"></div>
     </div></div>
@@ -975,7 +934,7 @@ function modelView(id){
 // After each choice, re-check which values still lead to a real pair.
 function refreshOptions(p){
   p.option_axes.forEach((axis, i) => {
-    const box = document.querySelector(`.opts[data-axis="${axis.name}"]`);
+    const box = document.getElementById('options-'+i);
     axis.values.forEach((val, j) => {
       const btn = box.children[j];
       const probe = {...sel, [axis.name]: val};
@@ -991,14 +950,15 @@ function refreshOptions(p){
   const done = p.option_axes.every(a => sel[a.name]);
   if(!done){
     const missing = p.option_axes.filter(a=>!sel[a.name]).map(a=>a.name);
-    box.innerHTML = `<div class="stockline pre">Сонгоно уу: ${missing.join(', ')}</div>`;
+    box.innerHTML = `<div class="stockline pre">Сонгоно уу: ${missing.map(esc).join(', ')}</div>`;
     return;
   }
   box.innerHTML = '';
 }
 
-function pickOpt(pid, axis, el){
+function pickOpt(pid, axisIndex, el){
   const p = CATALOG.find(x=>x.id===pid);
+  const axis=p.option_axes[axisIndex].name;
   sel[axis] = sel[axis] === el.textContent ? undefined : el.textContent;
   if(sel[axis] === undefined) delete sel[axis];
   refreshOptions(p);
@@ -1022,7 +982,7 @@ function cartView(){
   app.innerHTML = `
     <button class="back" onclick="navTo('shop')">← Дэлгүүр</button><h2>Таны сонгосон бараа</h2>
     ${lines.length ? lines.map((l,i)=>`
-      <div class="line"><img src="${l.img}" alt="" onerror="${imgFallback}">
+      <div class="line"><img src="${esc(l.img)}" alt="" onerror="${imgFallback}">
         <div><div class="ln">${esc(l.name)}</div><div class="lm">${mnt(l.price)} / ${l.unit}</div></div>
         <span class="selection-count">${l.qty} ${l.unit}</span>
         <button class="rm" aria-label="${esc(l.name)} хасах" onclick="cart.splice(${i},1);render()">×</button></div>`).join('')
@@ -1149,12 +1109,12 @@ function openLb(pid, index){
       <button class="lb-x" aria-label="Хаах" onclick="closeLb()">×</button>
     </div>
     <div class="lb-track" id="lbt" onscroll="lbSync(${p.images.length})">
-      ${p.images.map(u=>`<div class="lb-slide"><img src="${u}" alt="${p.name}" onerror="${imgFallback}"
+      ${p.images.map(u=>`<div class="lb-slide"><img src="${esc(u)}" alt="${esc(p.name)}" onerror="${imgFallback}"
          onclick="this.classList.toggle('zoomed')"></div>`).join('')}
     </div>
     <div class="lb-bot" id="lbb">
       ${p.images.map((u,i)=>`<button aria-current="${i===index}" onclick="lbGo(${i})">
-        <img src="${u}" alt="" onerror="${imgFallback}"></button>`).join('')}
+        <img src="${esc(u)}" alt="" onerror="${imgFallback}"></button>`).join('')}
     </div>`;
   document.body.appendChild(lbEl);
   document.body.style.overflow = 'hidden';
@@ -1199,7 +1159,7 @@ function closeLb(){
   setTimeout(()=>el.remove(), 280);
 }
 
-render();
+loadCatalog();
 </script>
 </body>
 </html>
