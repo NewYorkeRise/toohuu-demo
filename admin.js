@@ -1,3 +1,5 @@
+import {compressImage} from './admin.image.js';
+
 'use strict';
 
 const TYPE_NAMES = {boot:'Гутал', socks:'Оймс', rug:'Ширдэг'};
@@ -214,29 +216,6 @@ function addImageUrl() {
     renderGallery(); markDirty();
   } catch(error) { galleryError(error.message); }
 }
-async function compressImage(file) {
-  let bitmap;
-  try { bitmap = await createImageBitmap(file); }
-  catch { throw new Error(/\.hei[cf]$/i.test(file.name) || /hei[cf]/i.test(file.type) ? 'HEIC зураг энэ хөтөч дээр уншигдахгүй байна. JPG эсвэл PNG болгож оруулна уу.' : 'Зургийг уншиж чадсангүй. JPG, PNG эсвэл WebP зураг сонгоно уу.'); }
-  try {
-    const scale = Math.min(1,1600/Math.max(bitmap.width,bitmap.height));
-    const canvas = document.createElement('canvas');
-    let width = Math.max(1,Math.round(bitmap.width*scale)), height = Math.max(1,Math.round(bitmap.height*scale));
-    for (let attempt=0;attempt<5;attempt++) {
-      canvas.width=width; canvas.height=height;
-      const context=canvas.getContext('2d');
-      if (!context) throw new Error('Зургийг боловсруулах боломжгүй байна.');
-      context.drawImage(bitmap,0,0,width,height);
-      for (const quality of [.84,.74,.64,.54,.44]) {
-        const blob=await new Promise(resolve=>canvas.toBlob(resolve,'image/webp',quality));
-        if (!blob || blob.type!=='image/webp') throw new Error('Энэ хөтөч зураг боловсруулахыг дэмжихгүй байна. Chrome эсвэл Safari-г шинэчилнэ үү.');
-        if (blob.size<=700000) return blob;
-      }
-      width=Math.max(1,Math.floor(width*.8)); height=Math.max(1,Math.floor(height*.8));
-    }
-    throw new Error('Зургийн хэмжээ хэт том байна. Жижиг зураг сонгоно уу.');
-  } finally { bitmap.close?.(); }
-}
 async function addImageFiles(fileList) {
   if (!draft || saving || uploading || !fileList?.length) return;
   const session=editorSession, targetDraft=draft, files=Array.from(fileList), errors=[];
@@ -254,9 +233,10 @@ async function addImageFiles(fileList) {
         if (file.size>30*1024*1024) throw new Error('30 MB-аас жижиг зураг сонгоно уу.');
         if (!/^image\//i.test(file.type) && !/\.(jpe?g|png|webp|gif|avif|heic|heif)$/i.test(file.name)) throw new Error('Зургийн файл сонгоно уу.');
         if (/svg/i.test(file.type) || /\.svg$/i.test(file.name)) throw new Error('JPG, PNG эсвэл WebP зураг сонгоно уу.');
-        const blob=await compressImage(file);
+        const blob=await compressImage(file, message => { $('gallery-status').textContent=`${message} ${i+1} / ${selected.length}`; });
+        $('gallery-status').textContent=`Зураг оруулж байна… ${i+1} / ${selected.length}`;
         let result;
-        try { result=await api('/admin/api/images',{method:'POST',headers:{'Content-Type':'image/webp'},body:blob}); }
+        try { result=await api('/admin/api/images',{method:'POST',headers:{'Content-Type':blob.type},body:blob}); }
         catch(error) { if (!error.status) throw new Error('Зургийг серверт оруулж чадсангүй. Интернэт холболтоо шалгаад дахин оролдоно уу.'); throw error; }
         if (session!==editorSession || draft!==targetDraft) return;
         if (!/^\/media\/[a-f0-9]{64}$/.test(result.url)) throw new Error('Зургийн хадгалалтыг баталгаажуулж чадсангүй.');

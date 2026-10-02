@@ -81,6 +81,6 @@ export async function onRequest({ request, env, next, data }) {
   out.headers.set('X-Content-Type-Options', 'nosniff');
   out.headers.set('X-Frame-Options', 'DENY');
   out.headers.set('Referrer-Policy', 'same-origin');
-  out.headers.set('Content-Security-Policy', "default-src 'self'; script-src 'self'; style-src 'self' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' https: data:; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'");
+  out.headers.set('Content-Security-Policy', "default-src 'self'; script-src 'self'; style-src 'self' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' https: data: blob:; worker-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'");
   return out;
 }
